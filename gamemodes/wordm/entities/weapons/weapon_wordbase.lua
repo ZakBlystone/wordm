@@ -5,8 +5,8 @@ end
 SWEP.PrintName				= "Word Gun"
 SWEP.Slot					= 0
 
-SWEP.ViewModel				= "models/weapons/c_pistol.mdl"
-SWEP.WorldModel				= "models/weapons/w_pistol.mdl"
+SWEP.ViewModel				= "models/weapons/c_357.mdl"
+SWEP.WorldModel				= "models/weapons/w_357.mdl"
 
 SWEP.UseHands		= true
 
@@ -21,7 +21,7 @@ SWEP.Primary.DefaultClip	= 0
 SWEP.Primary.Ammo			= "none"
 SWEP.Primary.Sound			= Sound( "weapons/357/357_fire2.wav" )
 SWEP.Primary.Empty			= Sound( "weapons/pistol/pistol_empty.wav" )
-SWEP.Primary.Automatic		= false
+SWEP.Primary.Automatic		= true
 
 SWEP.Secondary.ClipSize		= -1
 SWEP.Secondary.DefaultClip	= -1
@@ -34,6 +34,8 @@ function SWEP:Initialize()
 
 	self:SetWeaponHoldType( self.HoldType )
 	self.Phrases = {}
+	self.NextBulletDamage = 0
+	self.CurrentPhrase = nil
 
 end
 
@@ -47,40 +49,57 @@ function SWEP:PrimaryAttack()
 
 	if IsFirstTimePredicted() then
 
+		self.NextBulletDamage = 0
+
 		--if self:Clip1() <= 0 then return end
 		if self.CurrentPhrase == nil then return end
 
-		local wordToFire = self.CurrentPhrase.words[#self.CurrentPhrase.words]
+		local phrase = self.CurrentPhrase
+		local wordToFire = phrase.words[#phrase.words]
 
-		table.remove(self.CurrentPhrase.words, #self.CurrentPhrase.words)
+		table.remove(phrase.words, #phrase.words)
 
-		if #self.CurrentPhrase.words == 0 then
+		if #phrase.words == 0 then
 			table.remove(self.Phrases, 1)
 			self.CurrentPhrase = self.Phrases[1]
 		end
 
-		if wordToFire.score == nil then 
+		print(phrase.phrase:sub(wordToFire.first, wordToFire.last) .. " : SCORE: " .. (wordToFire.score or 0))
+
+		if wordToFire.score == nil or wordToFire.score == 0 then 
 			self:EmitSound(self.Primary.Empty, 75, 100)
-			return 
+		else
+			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 7, 105))
+
+			self.NextBulletDamage = wordToFire.score
+
+			if CLIENT then
+				self.Shots[#self.Shots+1] = {
+					score = wordToFire.score * 3,
+					t = 0,
+				}
+			end
 		end
 
-
-		print("SCORE: " .. wordToFire.score)
-		self:EmitSound(self.Primary.Sound, 75, 120 - wordToFire.score * 10)
-
-		self:ShootEffects()
-		self:FireBullets({
-			Attacker = self:GetOwner(),
-			Damage = wordToFire.score,
-			Force = wordToFire.score * 10,
-			Dir = self:GetOwner():GetAimVector(),
-			Src = self:GetOwner():GetShootPos(),
-			IgnoreEntity = self:GetOwner(),
-		})
-
-		self:SetNextPrimaryFire( CurTime() + 0.1 )
-
 	end
+
+	if self.NextBulletDamage == 0 then
+		self:SetNextPrimaryFire( CurTime() + 0.4 )
+		return
+	end
+
+	self:ShootEffects()
+	self:FireBullets({
+		Attacker = self:GetOwner(),
+		Damage = self.NextBulletDamage * 3,
+		Force = self.NextBulletDamage * 10,
+		Dir = self:GetOwner():GetAimVector(),
+		Src = self:GetOwner():GetShootPos(),
+		IgnoreEntity = self:GetOwner(),
+		Spread = Vector(0,0,0)
+	})
+
+	self:SetNextPrimaryFire( CurTime() + 0.4 )
 
 end
 
@@ -112,6 +131,20 @@ function SWEP:GivePhrase( scoring )
 end
 
 function SWEP:DrawHUD()
+
+	self.Shots = self.Shots or {}
+
+	for i=#self.Shots, 1, -1 do
+
+		local x = self.Shots[i]
+		if x.t > 1 then table.remove(self.Shots,i) continue end
+
+		x.t = x.t + FrameTime()
+		local a = 1 - math.min(x.t, 1)
+
+		draw.SimpleText(x.score, "DermaLarge", ScrW()/2 + 80, ScrH()/2 + x.t * 100, Color(255,255,255,255*a), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+	end
 
 	local function DrawPhrase(p, y)
 

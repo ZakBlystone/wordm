@@ -15,7 +15,7 @@ net.Receive("wordscore_msg", function(len)
 	net.WriteFloat( CurTime() + TIME_TO_PHRASE )
 	net.SendToServer()
 
-	PrintTable(phrase)
+	--PrintTable(phrase)
 
 end)
 

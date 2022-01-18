@@ -25,16 +25,12 @@ function SendWordScore( t )
 	net.WriteUInt(t.first, WORD_POSBITS)
 	net.WriteUInt(t.last, WORD_POSBITS)
 
-	if bit.band(t.flags, WORD_DUPLICATE) == 0 then
+	if bit.band(t.flags, WORD_VALID) ~= 0 then
+		net.WriteUInt(t.score, WORD_SCOREBITS)
+	end
 
-		if bit.band(t.flags, WORD_VALID) ~= 0 then
-			net.WriteUInt(t.score, WORD_SCOREBITS)
-		end
-
-		if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
-			net.WriteFloat(t.cooldown)
-		end
-
+	if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
+		net.WriteFloat(t.cooldown)
 	end
 
 end
@@ -46,16 +42,12 @@ function RecvWordScore()
 	t.first = net.ReadUInt(WORD_POSBITS)
 	t.last = net.ReadUInt(WORD_POSBITS)
 
-	if bit.band(t.flags, WORD_DUPLICATE) == 0 then
+	if bit.band(t.flags, WORD_VALID) ~= 0 then
+		t.score = net.ReadUInt(WORD_SCOREBITS)
+	end
 
-		if bit.band(t.flags, WORD_VALID) ~= 0 then
-			t.score = net.ReadUInt(WORD_SCOREBITS)
-		end
-
-		if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
-			t.cooldown = net.ReadFloat()
-		end
-
+	if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
+		t.cooldown = net.ReadFloat()
 	end
 
 	return t
@@ -85,6 +77,8 @@ function RecvPhraseScore()
 end
 
 function GM:HandlePlayerPhraseSynced( ply, phrase )
+
+	--print("SYNC PHRASE: " .. tostring(phrase.phrase))
 
 	local weap = ply:GetActiveWeapon()
 	if weap.GivePhrase then
