@@ -1,0 +1,6 @@
+"wordm"
+{
+	"title"		"WorDM"
+	"base"		"base"
+	"menusystem"	"1"
+}
