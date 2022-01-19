@@ -2,11 +2,21 @@ include "shared.lua"
 include "cl_textfx.lua"
 include "cl_chat.lua"
 
+G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
+
 surface.CreateFont( "WordAmmoFont", {
 	font = "Akkurat-Bold",
 	extended = false,
 	size = 38,
 	weight = 1000,
+	blursize = 0,
+} )
+
+surface.CreateFont( "CooldownWordFont", {
+	font = "Akkurat-Bold",
+	extended = false,
+	size = 22,
+	weight = 0,
 	blursize = 0,
 } )
 
@@ -25,6 +35,12 @@ net.Receive("wordscore_msg", function(len)
 	net.WriteFloat( CurTime() + TIME_TO_PHRASE )
 	net.SendToServer()
 
+	for _,w in ipairs(phrase.words) do
+		if w.cooldown then
+			GAMEMODE:PostWordCooldown( ply, phrase.phrase:sub(w.first, w.last), w.cooldown )
+		end
+	end
+
 	--PrintTable(phrase)
 
 end)
@@ -40,6 +56,7 @@ function GM:Think()
 	end
 
 	self:ChatThink()
+	self:CooldownThink()
 
 end
 
@@ -48,6 +65,8 @@ function GM:HUDPaint()
 	if self:IsChatOpen() then
 		self:DrawChat()
 	end
+
+	self:DrawCooldowns()
 
 end
 
@@ -66,6 +85,61 @@ function GM:PlayerBindPress( ply, bind, pressed, code )
 		end
 		return true
 
+	end
+
+end
+
+function GM:PostWordCooldown( ply, str, cooldown )
+
+	for _,v in ipairs(G_WORD_COOLDOWNS) do
+
+		if v.str == str then
+			v.time = cooldown
+			return
+		end
+
+	end
+
+	G_WORD_COOLDOWNS[#G_WORD_COOLDOWNS+1] = {
+		time = cooldown,
+		str = str,
+		ply = ply,
+	}
+
+end
+
+function GM:CooldownThink()
+
+	for i=#G_WORD_COOLDOWNS, 1, -1 do
+
+		local c = G_WORD_COOLDOWNS[i]
+		if c.time <= CurTime() then
+			table.remove(G_WORD_COOLDOWNS, i)
+		end
+
+	end
+
+end
+
+function GM:DrawCooldowns()
+
+	surface.SetFont("CooldownWordFont")
+
+	for k, c in ipairs(G_WORD_COOLDOWNS) do
+
+		local tx = math.max(c.time - CurTime(), 0) * 4
+		local str = c.str
+		local tw, th = surface.GetTextSize(str)
+		local x, y = ScrW() - tw - 10, 10 + (k-1) * 28
+
+
+		surface.SetTextColor(Color(255,180,180,100))
+		surface.SetTextPos(x, y)
+		surface.DrawText(str)
+
+		surface.SetDrawColor(255,180,180,100)
+		surface.DrawRect(x - tx - 10, y, tx, th)
+	
 	end
 
 end

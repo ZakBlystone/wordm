@@ -53,8 +53,6 @@ function RecvWordScore()
 		t.cooldown = net.ReadFloat()
 	end
 
-	print(t.cooldown)
-
 	return t
 
 end

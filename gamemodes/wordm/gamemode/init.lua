@@ -53,7 +53,7 @@ function GM:ComputeWordCooldown( str )
 
 	if string.len(str) <= 4 then return 0 end
 
-	return 10 + string.len(str) * 5
+	return 2 + string.len(str) * 4
 
 end
 
