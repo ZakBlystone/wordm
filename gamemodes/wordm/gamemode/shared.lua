@@ -9,6 +9,7 @@ GM.Author   = "Zak"
 WORD_BITS = 4
 WORD_SCOREBITS = 16
 WORD_POSBITS = 10
+WORD_COOLDOWNBITS = 10
 
 PHRASE_LENBITS = 10
 
@@ -27,6 +28,7 @@ function SendWordScore( t )
 
 	if bit.band(t.flags, WORD_VALID) ~= 0 then
 		net.WriteUInt(t.score, WORD_SCOREBITS)
+		net.WriteUInt(math.floor(t.cooldown), WORD_COOLDOWNBITS)
 	end
 
 	if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
@@ -44,11 +46,14 @@ function RecvWordScore()
 
 	if bit.band(t.flags, WORD_VALID) ~= 0 then
 		t.score = net.ReadUInt(WORD_SCOREBITS)
+		t.cooldown = CurTime() + net.ReadUInt(WORD_COOLDOWNBITS)
 	end
 
 	if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
 		t.cooldown = net.ReadFloat()
 	end
+
+	print(t.cooldown)
 
 	return t
 

@@ -26,7 +26,7 @@ SWEP.Primary.Automatic		= true
 SWEP.Secondary.ClipSize		= -1
 SWEP.Secondary.DefaultClip	= -1
 SWEP.Secondary.Ammo		= "none"
-SWEP.Secondary.Sound			= Sound( "weapons/shotgun/shotgun_fire6.wav" )
+SWEP.Secondary.Sound			= Sound( "weapons/shotgun/shotgun_fire7.wav" )
 SWEP.Secondary.Empty			= Sound( "weapons/pistol/pistol_empty.wav" )
 SWEP.Secondary.Automatic		= false
 
@@ -84,8 +84,9 @@ function SWEP:PrimaryAttack()
 		return
 	end
 
+
 	self:ShootEffects()
-	self:FireBullets({
+	self:GetOwner():FireBullets({
 		Attacker = self:GetOwner(),
 		Damage = self.NextBulletDamage * 3,
 		Force = self.NextBulletDamage * 10,
@@ -104,20 +105,18 @@ function SWEP:SecondaryAttack()
 	if IsFirstTimePredicted() then
 
 		local score, count = self:ConsumePhrase()
-		self.NextBulletDamage = score
+		self.NextBulletDamage = math.ceil(score / 4)
+		self.NextBulletSpread = math.Remap(score, 0, 100, 0.4, 0.01)
 		self.NextBulletCount = count
-
-		print("WORD SCORE: " .. score)
-		print("WORD COUNT: " .. count)
 
 		if score == 0 then
 			self:EmitSound(self.Secondary.Empty, 75, 100)
 		else
-			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(score * 2, 105))
+			self:EmitSound(self.Secondary.Sound, 75, 120 - math.min(score/2, 105))
 
 			if CLIENT then
 				self.Shots[#self.Shots+1] = {
-					score = score * 2,
+					score = self.NextBulletDamage .. " x" .. self.NextBulletCount,
 					t = 0,
 				}
 			end
@@ -130,16 +129,18 @@ function SWEP:SecondaryAttack()
 		return
 	end
 
+	local spread = self.NextBulletSpread or 0.4
+
 	self:ShootEffects()
-	self:FireBullets({
+	self:GetOwner():FireBullets({
 		Num = self.NextBulletCount,
 		Attacker = self:GetOwner(),
-		Damage = self.NextBulletDamage * 3,
-		Force = self.NextBulletDamage * 10,
+		Damage = self.NextBulletDamage,
+		Force = 10,
 		Dir = self:GetOwner():GetAimVector(),
 		Src = self:GetOwner():GetShootPos(),
 		IgnoreEntity = self:GetOwner(),
-		Spread = Vector(0.1,0.1,0)
+		Spread = Vector(spread,spread,0),
 	})
 
 	self:SetNextSecondaryFire( CurTime() + 1 )
@@ -205,8 +206,8 @@ function SWEP:ConsumePhrase()
 		end
 	end
 
-	table.remove(self.Phrases, 1)
-	self.CurrentPhrase = self.Phrases[1]
+	--table.remove(self.Phrases, 1)
+	--self.CurrentPhrase = self.Phrases[1]
 
 	return totalScore, totalCount
 
@@ -411,4 +412,18 @@ function SWEP:DrawHUD()
 		end
 	end
 
+end
+
+function SWEP:DoDrawCrosshair( x, y )
+
+	if GAMEMODE:IsChatOpen() then return true end
+
+	surface.SetDrawColor( 255, 255, 255, 180 )
+	surface.DrawLine( x - 4, y, x - 0, y )
+	surface.DrawLine( x + 0, y, x + 4, y )
+	surface.DrawLine( x, y - 4, x, y - 0 )
+	surface.DrawLine( x, y + 0, x, y + 4 )
+
+	--surface.DrawOutlinedRect( x - 32, y - 32, 64, 64 )
+	return true
 end

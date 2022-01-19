@@ -16,11 +16,17 @@ if G_WORDLIST == nil then
 	G_WORDLIST = {}
 	G_WORDLIST_HASH = {}
 
-	local wordstr = file.Read("gamemodes/wordm/content/data/words.txt", "THIRDPARTY")
-	for s in string.gmatch(wordstr, "[^%s,]+") do
-		G_WORDLIST[#G_WORDLIST+1] = s:lower()
-		G_WORDLIST_HASH[s:lower()] = true
+	local function LoadWordTable(filename)
+
+		local wordstr = file.Read("gamemodes/wordm/content/data/" .. filename .. ".txt", "THIRDPARTY")
+		for s in string.gmatch(wordstr, "[^%s,]+") do
+			G_WORDLIST[#G_WORDLIST+1] = s:lower()
+			G_WORDLIST_HASH[s:lower()] = true
+		end
+
 	end
+
+	LoadWordTable("words")
 
 	print("Loaded " .. #G_WORDLIST .. " words.")
 
@@ -43,6 +49,8 @@ function GM:ShowSpare1( ply ) ply:SendLua("GAMEMODE:ShowSpare1()") end
 function GM:ShowSpare2( ply ) end
 
 function GM:ComputeWordCooldown( str )
+
+	if string.len(str) <= 4 then return 0 end
 
 	return 10 + string.len(str) * 5
 
@@ -78,6 +86,33 @@ concommand.Add("giveWords", function(p,c,a)
 
 end)
 
+concommand.Add("addWords", function(p,c,a)
+
+	if not p:IsAdmin() then return end
+
+	for _,v in ipairs(a) do
+
+		local str = string.lower(v)
+		if str ~= "" and str ~= " " then
+
+			if not G_WORDLIST_HASH[str] then
+
+				G_WORDLIST[#G_WORDLIST+1] = str
+				G_WORDLIST_HASH[str] = true
+				print("Added word: " .. str)
+
+			else
+
+				print("Word already added: " .. str)
+
+			end
+
+		end
+
+	end
+
+end)
+
 function GM:ScoreWord( word, applyCooldown )
 
 	local info = {}
@@ -94,7 +129,9 @@ function GM:ScoreWord( word, applyCooldown )
 			score = score + string.len(word.str)
 
 			if applyCooldown then
-				G_WORD_COOLDOWN[word.str] = CurTime() + self:ComputeWordCooldown(word.str)
+				local computed = self:ComputeWordCooldown(word.str)
+				G_WORD_COOLDOWN[word.str] = CurTime() + computed
+				info.cooldown = computed
 			end
 		end
 	end
