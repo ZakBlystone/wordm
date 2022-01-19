@@ -26,15 +26,21 @@ SWEP.Primary.Automatic		= true
 SWEP.Secondary.ClipSize		= -1
 SWEP.Secondary.DefaultClip	= -1
 SWEP.Secondary.Ammo		= "none"
+SWEP.Secondary.Sound			= Sound( "weapons/shotgun/shotgun_fire6.wav" )
+SWEP.Secondary.Empty			= Sound( "weapons/pistol/pistol_empty.wav" )
+SWEP.Secondary.Automatic		= false
 
 SWEP.Spawnable				= false
 SWEP.RequestInfo			= {}
+SWEP.ConsumeEntirePhrase	= true
 
 function SWEP:Initialize()
 
 	self:SetWeaponHoldType( self.HoldType )
 	self.Phrases = {}
+	self.WordEject = {}
 	self.NextBulletDamage = 0
+	self.NextBulletCount = 1
 	self.CurrentPhrase = nil
 
 end
@@ -50,25 +56,15 @@ function SWEP:PrimaryAttack()
 	if IsFirstTimePredicted() then
 
 		self.NextBulletDamage = 0
+		self.NextBulletCount = 1
 
-		--if self:Clip1() <= 0 then return end
-		if self.CurrentPhrase == nil then return end
+		local wordToFire, phrase = self:ConsumeWord()
 
-		local phrase = self.CurrentPhrase
-		local wordToFire = phrase.words[#phrase.words]
-
-		table.remove(phrase.words, #phrase.words)
-
-		if #phrase.words == 0 then
-			table.remove(self.Phrases, 1)
-			self.CurrentPhrase = self.Phrases[1]
-		end
-
-		print(phrase.phrase:sub(wordToFire.first, wordToFire.last) .. " : SCORE: " .. (wordToFire.score or 0))
-
-		if wordToFire.score == nil or wordToFire.score == 0 then 
+		if wordToFire == nil or wordToFire.score == nil or wordToFire.score == 0 then 
 			self:EmitSound(self.Primary.Empty, 75, 100)
 		else
+			print(phrase.phrase:sub(wordToFire.first, wordToFire.last) .. " : SCORE: " .. (wordToFire.score or 0))
+
 			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 7, 105))
 
 			self.NextBulletDamage = wordToFire.score
@@ -103,6 +99,53 @@ function SWEP:PrimaryAttack()
 
 end
 
+function SWEP:SecondaryAttack()
+
+	if IsFirstTimePredicted() then
+
+		local score, count = self:ConsumePhrase()
+		self.NextBulletDamage = score
+		self.NextBulletCount = count
+
+		print("WORD SCORE: " .. score)
+		print("WORD COUNT: " .. count)
+
+		if score == 0 then
+			self:EmitSound(self.Secondary.Empty, 75, 100)
+		else
+			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(score * 2, 105))
+
+			if CLIENT then
+				self.Shots[#self.Shots+1] = {
+					score = score * 2,
+					t = 0,
+				}
+			end
+		end
+
+	end
+
+	if self.NextBulletDamage == 0 then
+		self:SetNextSecondaryFire( CurTime() + 1 )
+		return
+	end
+
+	self:ShootEffects()
+	self:FireBullets({
+		Num = self.NextBulletCount,
+		Attacker = self:GetOwner(),
+		Damage = self.NextBulletDamage * 3,
+		Force = self.NextBulletDamage * 10,
+		Dir = self:GetOwner():GetAimVector(),
+		Src = self:GetOwner():GetShootPos(),
+		IgnoreEntity = self:GetOwner(),
+		Spread = Vector(0.1,0.1,0)
+	})
+
+	self:SetNextSecondaryFire( CurTime() + 1 )
+
+end
+
 function SWEP:CustomAmmoDisplay()
 
 	self.AmmoDisplay = self.AmmoDisplay or {} 
@@ -120,7 +163,58 @@ function SWEP:CustomAmmoDisplay()
 
 end
 
+function SWEP:ConsumeWord()
+
+	local phrase = self.CurrentPhrase
+	if phrase == nil then return end
+
+	local word = phrase.words[1]
+	if word == nil then return end
+
+	-- Skip this word if it is on cooldown
+	if bit.band(word.flags, WORD_COOLDOWN) ~= 0 then
+		local c = phrase.words[1]
+		table.remove(phrase.words, 1)
+		self:OnWordConsumed(phrase, c)
+		return self:ConsumeWord()
+	end
+
+	local c = phrase.words[1]
+	table.remove(phrase.words, 1)
+	self:OnWordConsumed(phrase, c)
+	return word, phrase
+
+end
+
+function SWEP:ConsumePhrase()
+
+	local phrase = self.CurrentPhrase
+	if phrase == nil then return 0,0 end
+
+	local totalScore = 0
+	local totalCount = 0
+	while #phrase.words > 0 do
+		local word = phrase.words[1]
+		table.remove(phrase.words,1)
+		self:OnWordConsumed(phrase, word)
+
+		if bit.band(word.flags, WORD_COOLDOWN) == 0 and
+		   bit.band(word.flags, WORD_VALID) ~= 0 then
+		   	totalScore = totalScore + (word.score or 0)
+		   	totalCount = totalCount + 1
+		end
+	end
+
+	table.remove(self.Phrases, 1)
+	self.CurrentPhrase = self.Phrases[1]
+
+	return totalScore, totalCount
+
+end
+
 function SWEP:GivePhrase( scoring )
+
+	scoring = table.Copy(scoring)
 
 	self.Phrases[#self.Phrases+1] = scoring
 
@@ -128,31 +222,109 @@ function SWEP:GivePhrase( scoring )
 		self.CurrentPhrase = scoring
 	end
 
+	self:OnPhraseAdded(scoring)
+
 end
 
-function SWEP:DrawHUD()
+function SWEP:OnWordConsumed(phrase, word)
 
-	self.Shots = self.Shots or {}
-
-	for i=#self.Shots, 1, -1 do
-
-		local x = self.Shots[i]
-		if x.t > 1 then table.remove(self.Shots,i) continue end
-
-		x.t = x.t + FrameTime()
-		local a = 1 - math.min(x.t, 1)
-
-		draw.SimpleText(x.score, "DermaLarge", ScrW()/2 + 80, ScrH()/2 + x.t * 100, Color(255,255,255,255*a), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-
+	if #phrase.words == 0 then
+		table.remove(self.Phrases, 1)
+		self.CurrentPhrase = self.Phrases[1]
 	end
 
-	local function DrawPhrase(p, y)
+	if CLIENT then 
+		self:EjectWord(phrase, word)
+		self:ComputeHUDLayout() 
+	end
 
-		surface.SetFont("DermaLarge")
-		local totalw = surface.GetTextSize(p.phrase)
+end
 
-		local x = ScrW() - 100 - totalw
-		for i=1, #p.words do
+function SWEP:OnPhraseAdded(phrase)
+
+	if CLIENT then self:ComputeHUDLayout() end
+
+end
+
+function SWEP:EjectWord(phrase, consumed)
+
+	local phraseInLayout = nil
+	local wordInLayout = nil
+	for _, phrase in ipairs(self.HUDLayout.phrases) do
+		for _, word in ipairs(phrase.layout) do
+			if word.word == consumed then
+				wordInLayout = word
+				phraseInLayout = phrase
+				break
+			end
+		end
+	end
+
+	if wordInLayout then
+
+		local tiles = textfx.MakeTiles( wordInLayout.str, "WordAmmoFont" )
+		local layout = textfx.LayoutLeft( tiles, wordInLayout.x, phraseInLayout.y )
+		local cr,cg,cb = wordInLayout.col:Unpack()
+
+		for _, e in ipairs(layout) do
+			e.vx = math.Rand(-800,-100)
+			e.vy = math.Rand(-300,-50)
+			e.vr = math.Rand(-360,360)*3
+			e.rate = math.Rand(1,4)
+			e.cr = cr
+			e.cg = cg
+			e.cb = cb
+		end
+
+		self.WordEject[#self.WordEject + 1] = {
+			t = 0,
+			layout = layout,
+		}
+
+	else
+		ErrorNoHalt("FAILED TO FIND EJECT WORD")
+	end
+
+end
+
+function SWEP:ProcessEject(entry)
+
+	local dt = FrameTime() * 2
+	entry.t = math.min(entry.t + dt, 1)
+
+	for _, e in ipairs(entry.layout) do
+		e.x = e.x + e.vx * dt
+		e.y = e.y + e.vy * dt
+		e.vy = e.vy + 800 * dt
+		e.a = math.max(e.a - e.rate * dt, 0)
+		e.r = e.r + e.vr * dt
+		e.sx = e.sx + dt*1.5
+		e.sy = e.sy + dt*1.5
+	end
+	if entry.t >= 1 then
+		return false
+	end
+
+	textfx.DrawLayout( entry.layout )
+
+	return true
+
+end
+
+function SWEP:ComputeHUDLayout()
+
+	self.HUDLayout = { phrases = {} }
+
+	--print("Recompute hud layout : " .. ScrW() .. " x " .. ScrH())
+
+	surface.SetFont("WordAmmoFont")
+
+	local function AppendPhrase(p, y)
+
+		local layoutPhrase = {}
+
+		local x = ScrW() - 100
+		for i=#p.words, 1, -1 do
 			local w = p.words[i]
 			local col = Color( 255, 255, 255, 255 )
 
@@ -167,16 +339,76 @@ function SWEP:DrawHUD()
 				end
 			end
 
-			local tw, th = draw.SimpleText(p.phrase:sub(w.first, w.last) .. " ", "DermaLarge", x, y, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-			x = x + tw
+			local str = p.phrase:sub(w.first, w.last) .. " "
+			local tw, th = surface.GetTextSize(str) 
+			x = x - tw
+
+			layoutPhrase[#layoutPhrase+1] =
+			{
+				word = p.words[i],
+				x = x,
+				col = col,
+				str = str,
+			}
 		end
+
+		self.HUDLayout.phrases[#self.HUDLayout.phrases+1] = 
+		{
+			phrase = p,
+			layout = layoutPhrase,
+			y = y,
+		}
 
 	end
 
 	local y = ScrH() - 200
 	for i=1, #self.Phrases do
-		DrawPhrase(self.Phrases[i], y)
+		AppendPhrase(self.Phrases[i], y)
 		y = y - 30
+	end
+
+	return self.HUDLayout
+
+end
+
+function SWEP:DrawHUD()
+
+	self.Shots = self.Shots or {}
+	self.HUDLayout = self.HUDLayout or self:ComputeHUDLayout()
+
+	for i=#self.Shots, 1, -1 do
+
+		local x = self.Shots[i]
+		if x.t > 1 then table.remove(self.Shots,i) continue end
+
+		x.t = x.t + FrameTime()
+		local a = 1 - math.min(x.t, 1)
+
+		draw.SimpleText(x.score, "WordAmmoFont", ScrW()/2 + 80, ScrH()/2 + x.t * 100, Color(255,255,255,255*a), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+	end
+
+	for _, phrase in ipairs(self.HUDLayout.phrases) do
+
+		for _, word in ipairs(phrase.layout) do
+
+			 draw.SimpleText(
+			 	word.str, 
+			 	"WordAmmoFont", 
+			 	word.x, 
+			 	phrase.y, 
+			 	word.col, 
+			 	TEXT_ALIGN_LEFT, 
+			 	TEXT_ALIGN_TOP)
+
+		end
+
+	end
+
+	for i=#self.WordEject, 1, -1 do
+		if not self:ProcessEject( self.WordEject[i] ) then
+			table.remove( self.WordEject, i )
+		end
 	end
 
 end

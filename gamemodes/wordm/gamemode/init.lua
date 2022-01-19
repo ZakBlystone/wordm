@@ -4,6 +4,8 @@ AddCSLuaFile "shared.lua"
 
 include "shared.lua"
 
+resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
+
 util.AddNetworkString("wordscore_msg")
 
 G_WORD_COOLDOWN = G_WORD_COOLDOWN or {}
@@ -42,7 +44,7 @@ function GM:ShowSpare2( ply ) end
 
 function GM:ComputeWordCooldown( str )
 
-	return 30 + string.len(str) * 5
+	return 10 + string.len(str) * 5
 
 end
 
@@ -51,6 +53,31 @@ function GM:ScalePlayerDamage( ply, hitgroup, dmginfo )
 
 end
 
+function GM:GiveWords( ply, count )
+
+	local str = ""
+	for i=1, count do
+
+		local word = G_WORDLIST[math.random(1, #G_WORDLIST)]
+
+		str = str .. word
+		if i ~= count then str = str .. " " end
+
+	end
+
+	self:ServerSendPhrase(ply, str)
+
+end
+
+concommand.Add("giveWords", function(p,c,a)
+
+	if not p:IsAdmin() then return end
+
+	local num = tonumber(a[1]) or 1
+	GAMEMODE:GiveWords(p, num)
+
+end)
+
 function GM:ScoreWord( word, applyCooldown )
 
 	local info = {}
@@ -58,11 +85,12 @@ function GM:ScoreWord( word, applyCooldown )
 	local score = 0
 
 	if G_WORDLIST_HASH[string.lower(word.str)] then
+		flags = flags + WORD_VALID
+
 		if (G_WORD_COOLDOWN[word.str] or 0) - CurTime() > 0 then
 			flags = flags + WORD_COOLDOWN
 			info.cooldown = G_WORD_COOLDOWN[word.str]
 		else
-			flags = flags + WORD_VALID
 			score = score + string.len(word.str)
 
 			if applyCooldown then
@@ -79,7 +107,7 @@ function GM:ScoreWord( word, applyCooldown )
 
 end
 
-function GM:ScorePhrase( text )
+function GM:ScorePhrase( text, applyCooldown )
 
 	local scoring = { phrase = text, words = {} }
 	local words = {}
@@ -114,7 +142,7 @@ function GM:ScorePhrase( text )
 			}
 		else
 			dup[v.str] = k
-			scoring.words[#scoring.words+1] = self:ScoreWord( v )			
+			scoring.words[#scoring.words+1] = self:ScoreWord( v, applyCooldown )			
 		end
 	end
 
@@ -135,11 +163,9 @@ function GM:ScorePhrase( text )
 
 end
 
-function GM:PlayerSay( ply, text )
+function GM:ServerSendPhrase( ply, text )
 
-	print("SAY: " .. text)
-
-	local phrase = self:ScorePhrase( text )
+	local phrase = self:ScorePhrase( text, true )
 
 	net.Start("wordscore_msg")
 	net.WriteFloat(CurTime())
@@ -149,6 +175,13 @@ function GM:PlayerSay( ply, text )
 
 	ply.pendingPhrase = phrase
 
+end
+
+function GM:PlayerSay( ply, text )
+
+	print("SAY: " .. text)
+
+	self:ServerSendPhrase( ply, text )
 	return text
 
 end

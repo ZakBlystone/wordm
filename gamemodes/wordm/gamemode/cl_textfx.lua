@@ -1,3 +1,5 @@
+module("textfx", package.seeall)
+
 local VMatrix = FindMetaTable("VMatrix")
 local surface_setFont = surface.SetFont
 local surface_setDrawColor = surface.SetDrawColor
@@ -13,14 +15,6 @@ local cam_pop = cam.PopModelMatrix
 local rad = math.pi / 180
 local cos = math.cos
 local sin = math.sin
-
-surface.CreateFont( "BigFont", {
-	font = "Akkurat-Bold",
-	extended = false,
-	size = 100,
-	weight = 1000,
-	blursize = 0,
-} )
 
 local __scratchMatrix = Matrix()
 local __pushedMatrix = false
@@ -44,9 +38,9 @@ local function PopMtx()
 
 end
 
-local function MakeTiles( str )
+function MakeTiles( str, font )
 
-	surface_setFont( "BigFont" )
+	surface_setFont( font )
 
 	local tiles = {}
 	local tw, th = surface_getTextSize(str)
@@ -66,6 +60,7 @@ local function MakeTiles( str )
 			if #tiles == 0 then
 				t.tw = tw
 				t.th = th
+				t.font = font
 			end
 			tiles[#tiles+1] = t
 		end
@@ -78,9 +73,7 @@ local function MakeTiles( str )
 
 end
 
-local tiles = MakeTiles("GAME OVER, TRY AGAIN")
-
-local function TileForm(tile, x, y, r, sx, sy)
+function TileForm(tile, x, y, r, sx, sy)
 
 	x = x or 0
 	y = y or 0
@@ -102,7 +95,55 @@ local function TileForm(tile, x, y, r, sx, sy)
 
 end
 
-local function Centered( tiles, x, y )
+function LayoutLeft( tiles, x, y )
+
+	local out = {}
+
+	local tw = tiles[1].tw
+	local th = tiles[1].th
+	for _, v in ipairs(tiles) do
+
+		out[#out+1] = {
+			t = v,
+			x = x + v.x,
+			y = y,
+			r = 0,
+			sx = 1,
+			sy = 1,
+			a = 1,
+		}
+
+	end
+
+	return out
+
+end
+
+function LayoutRight( tiles, x, y )
+
+	local out = {}
+
+	local tw = tiles[1].tw
+	local th = tiles[1].th
+	for _, v in ipairs(tiles) do
+
+		out[#out+1] = {
+			t = v,
+			x = x + v.x - tw,
+			y = y,
+			r = 0,
+			sx = 1,
+			sy = 1,
+			a = 1,
+		}
+
+	end
+
+	return out
+
+end
+
+function LayoutCentered( tiles, x, y )
 
 	local out = {}
 
@@ -123,6 +164,32 @@ local function Centered( tiles, x, y )
 	end
 
 	return out
+
+end
+
+function DrawLayout(layout)
+
+	surface_setFont( layout[1].t.font )
+
+	render.PushFilterMag( TEXFILTER.ANISOTROPIC )
+	render.PushFilterMin( TEXFILTER.ANISOTROPIC )
+
+	for k,v in ipairs(layout) do
+
+		PushMtx23( TileForm(v.t,v.x,v.y,v.r,v.sx,v.sy) )
+
+		surface_setTextColor(v.cr or 255,v.cg or 255,v.cb or 255,255*v.a)
+		surface_setTextPos( 0, 0 ) 
+		surface_drawText( v.t.ch )
+
+		--surface_drawOutlinedRect( 0, 0, v.w*2, v.h*2 )
+
+		PopMtx()
+
+	end
+
+	render.PopFilterMag()
+	render.PopFilterMin()
 
 end
 
