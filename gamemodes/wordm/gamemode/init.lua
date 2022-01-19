@@ -1,5 +1,6 @@
 AddCSLuaFile "cl_init.lua"
 AddCSLuaFile "cl_textfx.lua"
+AddCSLuaFile "cl_chat.lua"
 AddCSLuaFile "shared.lua"
 
 include "shared.lua"
