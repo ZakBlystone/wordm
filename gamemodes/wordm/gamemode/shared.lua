@@ -211,27 +211,48 @@ function wmeta:OnHit( tr )
 			self.attachLocalDir = mtx * self.dir
 		end
 
-		if tr.Entity:IsPlayer() then
 
-			if CLIENT then
+		self.brokeEnts = self.brokeEnts or {}
+		if not self.brokeEnts[tr.Entity] then
+			if tr.Entity:GetClass() == "func_breakable_surf" or tr.Entity:GetClass() == "func_breakable" then
+				if SERVER then tr.Entity:Fire("Break") end
+				-- keep going
+				self.hit = nil
+				self.brokeEnts[tr.Entity] = true
+
+				return
+			end
+		else
+			-- keep going
+			self.hit = nil
+
+			return
+		end
+
+		if CLIENT then
+
+			if tr.Entity:IsPlayer() then
 
 				local ed = EffectData()
 				ed:SetOrigin( tr.HitPos )
 				util.Effect("BloodImpact", ed)
 
-			else
-
-				local inf = DamageInfo()
-				inf:SetDamage( self.damage or 0 )
-				inf:SetDamageType( DMG_BULLET )
-				inf:SetAttacker( self.owner )
-				inf:SetDamageForce( self.dir * (1000 * self.damage) )
-				inf:SetDamagePosition( tr.HitPos )
-				tr.Entity:TakeDamageInfo( inf )
-
 			end
 
+		else
+
+			local inf = DamageInfo()
+			inf:SetDamage( self.damage or 0 )
+			inf:SetDamageType( DMG_BULLET )
+			inf:SetAttacker( self.owner )
+			inf:SetDamageForce( self.dir * (1000 * self.damage) )
+			inf:SetDamagePosition( tr.HitPos )
+			tr.Entity:TakeDamageInfo( inf )
+
+			print("DAMAGE ENTITY: " .. tostring(tr.Entity))
+
 		end
+
 
 	end
 
@@ -363,7 +384,7 @@ end
 function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 
 	spread = spread or 0
-	local speed = 124000
+	local speed = 4000
 
 	if spread ~= 0 then ApplySpread(dir, spread, idx) end
 
