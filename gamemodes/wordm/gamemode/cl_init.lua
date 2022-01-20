@@ -57,6 +57,15 @@ function GM:Think()
 
 	self:ChatThink()
 	self:CooldownThink()
+	--self:UpdateFiredWords()
+
+end
+
+function GM:PostDrawOpaqueRenderables()
+
+	surface.SetFont( "WordAmmoFont" )
+	self:DrawFiredWords()
+
 
 end
 

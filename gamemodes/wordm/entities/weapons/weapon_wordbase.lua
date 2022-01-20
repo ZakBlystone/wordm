@@ -53,21 +53,24 @@ end
 
 function SWEP:PrimaryAttack()
 
+	--if self:GetOwner():IsBot() then return end
+
 	if IsFirstTimePredicted() then
 
 		self.NextBulletDamage = 0
 		self.NextBulletCount = 1
 
 		local wordToFire, phrase = self:ConsumeWord()
-
 		if wordToFire == nil or wordToFire.score == nil or wordToFire.score == 0 then 
 			self:EmitSound(self.Primary.Empty, 75, 100)
 		else
-			print(phrase.phrase:sub(wordToFire.first, wordToFire.last) .. " : SCORE: " .. (wordToFire.score or 0))
+			local str = phrase.phrase:sub(wordToFire.first, wordToFire.last)
+			print(str .. " : SCORE: " .. (wordToFire.score or 0))
 
 			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 7, 105))
 
 			self.NextBulletDamage = wordToFire.score
+			self.NextBulletStr = str
 
 			if CLIENT then
 				self.Shots[#self.Shots+1] = {
@@ -75,6 +78,18 @@ function SWEP:PrimaryAttack()
 					t = 0,
 				}
 			end
+		end
+
+		if self.NextBulletDamage ~= 0 then
+
+			GAMEMODE:FireWord( 
+				self:GetOwner(), 
+				self:GetOwner():GetShootPos(), 
+				self:GetOwner():GetAimVector(),
+				0,
+				self.NextBulletDamage * 3,
+				self.NextBulletStr or "<word>" )
+
 		end
 
 	end
@@ -86,15 +101,6 @@ function SWEP:PrimaryAttack()
 
 
 	self:ShootEffects()
-	self:GetOwner():FireBullets({
-		Attacker = self:GetOwner(),
-		Damage = self.NextBulletDamage * 3,
-		Force = self.NextBulletDamage * 10,
-		Dir = self:GetOwner():GetAimVector(),
-		Src = self:GetOwner():GetShootPos(),
-		IgnoreEntity = self:GetOwner(),
-		Spread = Vector(0,0,0)
-	})
 
 	self:SetNextPrimaryFire( CurTime() + 0.4 )
 
@@ -104,10 +110,11 @@ function SWEP:SecondaryAttack()
 
 	if IsFirstTimePredicted() then
 
-		local score, count = self:ConsumePhrase()
+		local score, count, strings = self:ConsumePhrase()
 		self.NextBulletDamage = math.ceil(score / 4)
 		self.NextBulletSpread = math.Remap(score, 0, 100, 0.4, 0.01)
 		self.NextBulletCount = count
+		self.NextBulletStrings = strings
 
 		if score == 0 then
 			self:EmitSound(self.Secondary.Empty, 75, 100)
@@ -122,6 +129,24 @@ function SWEP:SecondaryAttack()
 			end
 		end
 
+		if score ~= 0 then
+
+			local spread = self.NextBulletSpread or 0.4
+			for i=1, self.NextBulletCount do
+
+				GAMEMODE:FireWord( 
+					self:GetOwner(), 
+					self:GetOwner():GetShootPos(), 
+					self:GetOwner():GetAimVector(),
+					spread,
+					self.NextBulletDamage * 3,
+					self.NextBulletStrings[i] or "<word>",
+					i )
+
+			end
+
+		end
+
 	end
 
 	if self.NextBulletDamage == 0 then
@@ -129,10 +154,11 @@ function SWEP:SecondaryAttack()
 		return
 	end
 
-	local spread = self.NextBulletSpread or 0.4
+	
 
 	self:ShootEffects()
-	self:GetOwner():FireBullets({
+
+	--[[self:GetOwner():FireBullets({
 		Num = self.NextBulletCount,
 		Attacker = self:GetOwner(),
 		Damage = self.NextBulletDamage,
@@ -141,7 +167,7 @@ function SWEP:SecondaryAttack()
 		Src = self:GetOwner():GetShootPos(),
 		IgnoreEntity = self:GetOwner(),
 		Spread = Vector(spread,spread,0),
-	})
+	})]]
 
 	self:SetNextSecondaryFire( CurTime() + 1 )
 
@@ -194,6 +220,7 @@ function SWEP:ConsumePhrase()
 
 	local totalScore = 0
 	local totalCount = 0
+	local strings = {}
 	while #phrase.words > 0 do
 		local word = phrase.words[1]
 		table.remove(phrase.words,1)
@@ -203,13 +230,15 @@ function SWEP:ConsumePhrase()
 		   bit.band(word.flags, WORD_VALID) ~= 0 then
 		   	totalScore = totalScore + (word.score or 0)
 		   	totalCount = totalCount + 1
+
+		   	strings[#strings+1] = phrase.phrase:sub(word.first, word.last)
 		end
 	end
 
 	--table.remove(self.Phrases, 1)
 	--self.CurrentPhrase = self.Phrases[1]
 
-	return totalScore, totalCount
+	return totalScore, totalCount, strings
 
 end
 

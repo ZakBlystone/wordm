@@ -8,6 +8,7 @@ include "shared.lua"
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
 
 util.AddNetworkString("wordscore_msg")
+util.AddNetworkString("wordfire_msg")
 
 G_WORD_COOLDOWN = G_WORD_COOLDOWN or {}
 G_WORD_COOLDOWN = {}
@@ -83,6 +84,18 @@ concommand.Add("giveWords", function(p,c,a)
 	if not p:IsAdmin() then return end
 
 	local num = tonumber(a[1]) or 1
+	local who = a[2]
+
+	if who then
+		for _,v in ipairs(player.GetAll()) do
+			if string.find(v:Nick():lower(), who) ~= nil then
+				p = v
+			end
+		end
+	end
+
+	print("GIVE WORDS TO: " .. tostring(p))
+
 	GAMEMODE:GiveWords(p, num)
 
 end)
@@ -204,6 +217,12 @@ end
 function GM:ServerSendPhrase( ply, text )
 
 	local phrase = self:ScorePhrase( text, true )
+
+	if ply:IsBot() then
+
+		self:HandlePlayerPhraseSynced( ply, phrase )
+
+	end
 
 	net.Start("wordscore_msg")
 	net.WriteFloat(CurTime())
