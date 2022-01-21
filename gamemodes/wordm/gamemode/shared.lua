@@ -238,8 +238,22 @@ function wmeta:OnHit( tr )
 				util.Effect("BloodImpact", ed)
 
 				local m = Material("decals/flesh/blood" .. math.random( 1, 5 ))
-				--m = Material( util.DecalMaterial("Blood") )
 				util.DecalEx( m, tr.Entity, tr.HitPos, tr.HitNormal, Color(255,255,255,255), 1, 1 )
+				util.Decal("Blood", tr.HitPos, tr.HitPos + self.dir * 192, tr.Entity)
+
+			else
+
+				if tr.SurfaceProps then
+
+					local ed = EffectData()
+					ed:SetEntity( Entity(0) )
+					ed:SetOrigin( tr.HitPos )
+					ed:SetStart( tr.StartPos )
+					ed:SetSurfaceProp( tr.SurfaceProps )
+					ed:SetDamageType( DMG_BULLET )
+					util.Effect("Impact", ed)
+
+				end
 
 			end
 
