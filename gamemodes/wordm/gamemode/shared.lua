@@ -3,6 +3,7 @@ AddCSLuaFile()
 include "player_class/player_common.lua"
 
 local sv_debugWordBullets = CreateConVar("sv_debugwordbullets", "0", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "show network debugging")
+local sv_damageMultiplier = CreateConVar("sv_damageMultiplier", "1", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "modify word-bullet damage")
 
 GM.Name     = "WorDM"
 GM.Author   = "Zak"
@@ -407,6 +408,8 @@ function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 	spread = spread or 0
 	local speed = 4000
 
+	damage = (damage or 1) * sv_damageMultiplier:GetFloat()
+
 	if spread ~= 0 then ApplySpread(dir, spread, idx) end
 
 	G_WORDS_FIRED[#G_WORDS_FIRED+1] = setmetatable({
@@ -415,7 +418,7 @@ function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 		org = pos,
 		pos = Vector(pos),
 		dir = dir,
-		damage = damage or 1,
+		damage = damage,
 		str = str,
 		speed = speed,
 		angle = dir:Angle(),
