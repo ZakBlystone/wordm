@@ -10,6 +10,12 @@ resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
 
+local function SanitizeToAscii(str)
+
+	return string.gsub(str, "[^%a%s]", "")
+
+end
+
 G_WORD_COOLDOWN = G_WORD_COOLDOWN or {}
 G_WORD_COOLDOWN = {}
 
@@ -236,9 +242,11 @@ end
 
 function GM:PlayerSay( ply, text )
 
+	local sanitized = SanitizeToAscii(text)
 	print("SAY: " .. text)
 
-	self:ServerSendPhrase( ply, text )
+	if #string.gsub(sanitized, "[%s]", "") == 0 then return text end
+	self:ServerSendPhrase( ply, sanitized )
 	return text
 
 end

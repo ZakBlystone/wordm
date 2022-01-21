@@ -237,6 +237,10 @@ function wmeta:OnHit( tr )
 				ed:SetOrigin( tr.HitPos )
 				util.Effect("BloodImpact", ed)
 
+				local m = Material("decals/flesh/blood" .. math.random( 1, 5 ))
+				--m = Material( util.DecalMaterial("Blood") )
+				util.DecalEx( m, tr.Entity, tr.HitPos, tr.HitNormal, Color(255,255,255,255), 1, 1 )
+
 			end
 
 		else
@@ -307,6 +311,8 @@ local _delta = Vector()
 local _projected = Vector()
 local _final = Vector()
 local _rotated = Angle()
+local _identity = Matrix()
+_identity:Identity()
 
 function wmeta:Draw()
 
@@ -316,6 +322,7 @@ function wmeta:Draw()
 		if self.attach == LocalPlayer() then return end
 
 		local mtx = self.attach:GetBoneMatrix( self.attachBone )
+		if mtx == nil then self.attach = nil return end
 		self.pos = mtx * self.attachLocal
 
 		mtx:SetTranslation(zerovector)

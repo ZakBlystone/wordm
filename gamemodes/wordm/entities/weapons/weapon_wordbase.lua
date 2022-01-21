@@ -112,7 +112,7 @@ function SWEP:SecondaryAttack()
 
 		local score, count, strings = self:ConsumePhrase()
 		self.NextBulletDamage = math.ceil(score / 4)
-		self.NextBulletSpread = math.Remap(score, 0, 100, 0.4, 0.01)
+		self.NextBulletSpread = math.Remap(score, 0, 100, 0.3, 0.01)
 		self.NextBulletCount = count
 		self.NextBulletStrings = strings
 
