@@ -143,6 +143,15 @@ G_WORDSCORE_HISTORY_TIME = 10
 
 local gradient_mat = Material("vgui/gradient_down")
 
+local function FormatTimeGood(t)
+
+	local minutes = math.floor(t/60) % 60
+	local seconds = math.floor(t) % 60
+	local hundredths = math.floor(t*100) % 100
+	return ("%02i:%02i.%02i"):format(minutes, seconds, hundredths)
+
+end
+
 function GM:DrawGameState()
 
 	local ge = self:GetGameEntity()
@@ -171,7 +180,7 @@ function GM:DrawGameState()
 
 		end
 
-		timer = string.FormattedTime( ge:GetTimeRemaining(), "%02i:%02i:%02i" )
+		timer = FormatTimeGood( ge:GetTimeRemaining() )
 
 	elseif gamestate == GAMESTATE_PLAYING then
 
@@ -205,7 +214,7 @@ function GM:DrawGameState()
 			subtitle = "NOBODY WON! :("
 		end
 
-		timer = string.FormattedTime( ge:GetTimeRemaining(), "%02i:%02i:%02i" )
+		timer = FormatTimeGood( ge:GetTimeRemaining() )
 
 	end
 
