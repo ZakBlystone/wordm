@@ -97,6 +97,33 @@ function GM:InitPostEntity()
 
 end
 
+function GM:PlayerDeathThink( ply )
+
+	local wantSpawn = ply:KeyDown(IN_ATTACK)
+
+	if ply:GetPlaying() then
+		local state = self:GetGameEntity():GetGameState()
+		if state == GAMESTATE_PLAYING or state == GAMESTATE_POSTGAME then 
+
+			if wantSpawn and CurTime() - (ply.deathTime or 0) > 2 then
+
+				if not ply.becameSpectator then
+					ply.becameSpectator = true
+					self:BecomeSpectator( ply )
+				end
+
+			end
+
+			return 
+		end
+	end
+
+	if wantSpawn then
+		ply:Spawn()
+	end
+
+end
+
 function GM:SelectFurthestSpawn( playing )
 
 	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
@@ -112,7 +139,7 @@ function GM:SelectFurthestSpawn( playing )
 
 		local minPlayerDist = math.huge
 		for _,pl in ipairs( players ) do
-			minPlayerDist = math.min( minPlayerDist, pl:GetPos():DistToSqr(v:GetPos()) )
+			minPlayerDist = math.min( minPlayerDist, pl:GetPos():Distance(v:GetPos()) )
 		end
 
 		if minPlayerDist > bestDist then
@@ -121,6 +148,8 @@ function GM:SelectFurthestSpawn( playing )
 		end
 
 	end
+
+	print("BEST SPAWN[" .. tostring(bestSpawn) .. "] IS: " .. bestDist .. " from any other player")
 
 	return bestSpawn or spawns[1]
 
@@ -136,8 +165,36 @@ end
 
 function GM:PlayerSelectSpawn( ply )
 
-	local spawn = self:SelectFurthestSpawn( ply:GetPlaying() )
+	local spawn = self:SelectFurthestSpawn( ply.GetPlaying and ply:GetPlaying() or false )
 	return spawn
+
+end
+
+function GM:BecomeSpectator( ply, stay )
+
+	local activePlayers = GAMEMODE:GetAllPlayers( true )
+	local spawns = ents.FindByClass("wordm_spawn")
+
+	ply:Spectate(OBS_MODE_ROAMING)
+
+	if not stay then
+		if #activePlayers > 0 then
+			ply:SetPos( activePlayers[math.random(1, #activePlayers)]:GetPos() + Vector(0,0,64) )
+		else
+			ply:SetPos( spawns[math.random(1,#spawns)]:GetPos() + Vector(0,0,64) )
+		end
+	else
+		ply:SetPos( ply:GetPos() + Vector(0,0,64) )
+	end
+
+	ply:StripWeapons()
+
+end
+
+function GM:PlayerDeath( ply, inflictor, attacker )
+
+	ply.deathTime = CurTime()
+	ply.becameSpectator = false
 
 end
 
@@ -147,6 +204,14 @@ function GM:PlayerSpawn( ply )
 
 	player_manager.SetPlayerClass( ply, "player_common" )
 	player_manager.RunClass( ply, "Init" )
+
+	if self:GetGameEntity():GetGameState() == GAMESTATE_PLAYING then
+
+		if ply.GetPlaying and not ply:GetPlaying() then
+			self:BecomeSpectator( ply )
+		end
+
+	end
 
 	return self.BaseClass.PlayerSpawn( self, ply )
 

@@ -392,3 +392,9 @@ function GM:DrawFiredWords()
 	end
 
 end
+
+function GM:ClearWordBullets()
+
+	G_WORDS_FIRED = {}
+
+end

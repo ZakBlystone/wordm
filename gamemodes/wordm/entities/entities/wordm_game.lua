@@ -4,7 +4,7 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 local sv_gameStartTime = CreateConVar("wordm_gameStartTimer", "30", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
-local sv_gamePostTime = CreateConVar("wordm_gamePostTimer", "5", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
+local sv_gamePostTime = CreateConVar("wordm_gamePostTimer", "10", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
 
 GAMESTATE_IDLE = 0
 GAMESTATE_COUNTDOWN = 1
@@ -33,9 +33,20 @@ function ENT:GotoIdleState()
 
 	self:SetGameState( GAMESTATE_IDLE )
 
+	local idlePlayers = GAMEMODE:GetAllPlayers( false )
+	for _,v in ipairs(idlePlayers) do
+		v:UnSpectate()
+		v:Spawn()
+	end
+
+
 	local activePlayers = GAMEMODE:GetAllPlayers( true )
 	for _,v in ipairs(activePlayers) do
 		v:SetPlaying(false)
+		v:UnSpectate()
+	end
+
+	for _,v in ipairs(activePlayers) do
 		v:Spawn()
 	end
 
@@ -59,6 +70,13 @@ function ENT:GotoPlayingState()
 	if CLIENT then return end
 
 	self:SetGameState( GAMESTATE_PLAYING )
+
+	-- Make all idle players spectate
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(false) ) do
+
+		GAMEMODE:BecomeSpectator( v )
+
+	end
 
 end
 
@@ -115,6 +133,14 @@ function ENT:Think()
 				self:GotoIdleState()
 
 			end
+
+		end
+
+	else
+
+		if self:GetGameState() == GAMESTATE_IDLE then
+
+			GAMEMODE:ClearWordBullets()
 
 		end
 

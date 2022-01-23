@@ -127,6 +127,8 @@ end
 
 G_WORDSCORE_HISTORY_TIME = 10
 
+local gradient_mat = Material("vgui/gradient_down")
+
 function GM:DrawGameState()
 
 	local ge = self:GetGameEntity()
@@ -157,13 +159,34 @@ function GM:DrawGameState()
 
 		timer = string.FormattedTime( ge:GetTimeRemaining(), "%02i:%02i:%02i" )
 
+	elseif gamestate == GAMESTATE_PLAYING then
+
+		if not LocalPlayer():GetPlaying() then
+
+			title = "YOU ARE SPECTATING"
+			subtitle = "Wait until the next game to join"
+
+		elseif LocalPlayer():Alive() == false then
+
+			title = "YOU DIED"
+			subtitle = "Wait until the round is over"
+
+		end
+
 	elseif gamestate == GAMESTATE_POSTGAME then
 
 		title = "GAME OVER"
 
-		local activeplayers = self:GetAllPlayers()
-		if #activeplayers > 0 and IsValid(activeplayers[1]) then
-			subtitle = activeplayers[1]:Nick() .. " IS THE WINNER!"
+		local activeplayers = self:GetAllPlayers(true)
+		local liveplayer = nil
+		if #activeplayers > 0 then
+			for _,v in ipairs(activeplayers) do
+				if v:Alive() then liveplayer = v break end
+			end
+		end
+
+		if IsValid(liveplayer) then
+			subtitle = liveplayer:Nick() .. " IS THE WINNER!"
 		else
 			subtitle = "NOBODY WON! :("
 		end
@@ -173,6 +196,10 @@ function GM:DrawGameState()
 	end
 
 	if title then
+
+		surface.SetMaterial(gradient_mat)
+		surface.SetDrawColor(0,0,0,200)
+		surface.DrawTexturedRect(0,0,ScrW(),400)
 
 		draw.SimpleText(title, "GameStateTitle", ScrW()/2,100, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
@@ -194,6 +221,7 @@ end
 
 function GM:HUDPaint()
 
+	self:DrawGameState()
 	self:DrawMapEditUI()
 
 	if self:IsChatOpen() then
@@ -218,8 +246,6 @@ function GM:HUDPaint()
 		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8)
 		y = y + (h or 0) + 5
 	end
-
-	self:DrawGameState()
 
 end
 
