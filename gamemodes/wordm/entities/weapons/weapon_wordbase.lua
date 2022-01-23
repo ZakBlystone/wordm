@@ -341,6 +341,7 @@ function SWEP:ProcessEject(entry)
 
 end
 
+G_WEAPON_PHRASE_LOC = {0,0}
 function SWEP:ComputeHUDLayout()
 
 	self.HUDLayout = { phrases = {} }
@@ -354,21 +355,12 @@ function SWEP:ComputeHUDLayout()
 		local layoutPhrase = {}
 
 		local x = ScrW() - 100
+		G_WEAPON_PHRASE_LOC = {x,y}
+
 		for i=#p.words, 1, -1 do
 			local w = p.words[i]
-			local col = Color( 255, 255, 255, 255 )
-
-			if bit.band(w.flags, WORD_VALID) == 0 then
-				col = Color(255,100,100,255)
-			else
-				if bit.band(w.flags, WORD_COOLDOWN) ~= 0 then
-					col = Color(60,60,128,255)
-				end
-				if bit.band(w.flags, WORD_DUPLICATE) ~= 0 then
-					col.b = 0
-				end
-			end
-
+			local cr,cg,cb = GAMEMODE:GetWordColor(w)
+			local col = Color( cr,cg,cb, 255 )
 			local str = p.phrase:sub(w.first, w.last) .. " "
 			local tw, th = surface.GetTextSize(str) 
 			x = x - tw

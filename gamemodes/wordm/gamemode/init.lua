@@ -1,18 +1,24 @@
 AddCSLuaFile "cl_init.lua"
 AddCSLuaFile "cl_textfx.lua"
 AddCSLuaFile "cl_chat.lua"
+AddCSLuaFile "cl_phrasescore.lua"
+AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
 
 include "shared.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
+resource.AddFile("sound/wordm/word_eval.wav")
+resource.AddFile("sound/wordm/word_place.wav")
+resource.AddFile("sound/wordm/word_place2.wav")
+resource.AddFile("sound/wordm/word_snap.wav")
 
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
 
 local function SanitizeToAscii(str)
 
-	return string.gsub(str, "[^%a%s]", "")
+	return string.gsub(str, "[^%a%s%p]", "")
 
 end
 
@@ -169,11 +175,14 @@ function GM:ScorePhrase( text, applyCooldown )
 	local scoring = { phrase = text, words = {} }
 	local words = {}
 
+	print("---PHRASE: " .. tostring(text))
+
 	local max = 1000
 	local a,b,c = 0,0
 	while true do
 		a,b,c = text:find( "([%w-']+)", b+1 )
 		if not a then break end
+		print("---WORD: " .. tostring(c))
 		words[#words+1] = {
 			first = a,
 			last = b,

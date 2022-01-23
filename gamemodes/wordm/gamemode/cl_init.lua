@@ -1,6 +1,7 @@
 include "shared.lua"
 include "cl_textfx.lua"
 include "cl_chat.lua"
+include "cl_phrasescore.lua"
 
 G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
 
@@ -16,6 +17,14 @@ surface.CreateFont( "CooldownWordFont", {
 	font = "Akkurat-Bold",
 	extended = false,
 	size = 22,
+	weight = 0,
+	blursize = 0,
+} )
+
+surface.CreateFont( "WordScoreFont", {
+	font = "Akkurat-Bold",
+	extended = false,
+	size = 25,
 	weight = 0,
 	blursize = 0,
 } )
@@ -40,6 +49,8 @@ net.Receive("wordscore_msg", function(len)
 			GAMEMODE:PostWordCooldown( ply, phrase.phrase:sub(w.first, w.last), w.cooldown )
 		end
 	end
+
+	GAMEMODE:ShowPhraseScore( ply, phrase )
 
 	--PrintTable(phrase)
 
@@ -69,6 +80,24 @@ function GM:PostDrawOpaqueRenderables()
 
 end
 
+function GM:GetWordColor(word)
+
+	local r,g,b = 255,255,255
+
+	if bit.band(word.flags, WORD_VALID) == 0 then
+		r,g,b = 255,100,100
+	else
+		if bit.band(word.flags, WORD_COOLDOWN) ~= 0 then
+			r,g,b = 60,60,128
+		end
+		if bit.band(word.flags, WORD_DUPLICATE) ~= 0 then
+			b = 0
+		end
+	end
+	return r,g,b
+
+end
+
 function GM:HUDPaint()
 
 	if self:IsChatOpen() then
@@ -76,6 +105,10 @@ function GM:HUDPaint()
 	end
 
 	self:DrawCooldowns()
+
+	if G_TEMP_PHRASESCORE then
+		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2, true )
+	end
 
 end
 
@@ -150,5 +183,19 @@ function GM:DrawCooldowns()
 		surface.DrawRect(x - tx - 10, y, tx, th)
 	
 	end
+
+end
+
+G_TEMP_PHRASESCORE = G_TEMP_PHRASESCORE or nil
+
+function GM:ShowPhraseScore( ply, phrase )
+
+	if ply == LocalPlayer() then
+		surface.PlaySound("wordm/word_place.wav")
+	else
+		surface.PlaySound("wordm/word_place2.wav")
+	end
+
+	G_TEMP_PHRASESCORE = phrasescore.New( ply, phrase )
 
 end
