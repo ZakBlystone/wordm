@@ -1,4 +1,6 @@
 
+MAX_CHAT_LENGTH = 100
+
 function GM:CreateMove( cmd )
 
 	if self.ChatOpened then
@@ -59,12 +61,25 @@ function GM:DrawChat()
 	surface.DrawRect(cx-2, cy, 6, 2)
 	surface.DrawRect(cx-2, cy+th, 6, 2)
 
+
+	surface.SetTextColor(255, 255, 255)
+	surface.SetTextPos(ScrW()/2, ScrH()/2 + 50 )
+
+	local chatlen = #self.ChatBuffer
+	if chatlen == MAX_CHAT_LENGTH then
+		surface.SetTextColor(255, 50, 50)
+	elseif chatlen > MAX_CHAT_LENGTH - 10 then
+		surface.SetTextColor(255, 170, 100)
+	end
+
+	surface.DrawText(chatlen .. "/" .. MAX_CHAT_LENGTH)
+
 end
 
 function GM:SubmitChatBuffer()
 
 	local str = table.concat(self.ChatBuffer)
-	if #str > 0 then LocalPlayer():ConCommand("say " .. str) end
+	if #str > 0 then self:SubmitPhrase(str) end --LocalPlayer():ConCommand("say " .. str) end
 	self.ChatBuffer = {}
 	self.ChatCarat = 0
 
@@ -101,11 +116,12 @@ local shiftTranslation = {
 	["'"] = "\"",
 	["["] = "{",
 	["]"] = "}",
-	["BACKSPACE"] = "DELETEWORD",
+	--["BACKSPACE"] = "DELETEWORD",
 }
 
 local ctrlTranslation = {
-	["BACKSPACE"] = "CLEAR",
+	--["BACKSPACE"] = "CLEAR",
+	["BACKSPACE"] = "DELETEWORD",
 }
 
 for i=1, #letters do shiftTranslation[letters[i]] = string.upper(letters[i]) end
@@ -205,8 +221,10 @@ function GM:SendCodeToChatBuffer( code )
 		self.ChatBuffer = {}
 		self.ChatCarat = 0
 	elseif #name == 1 then
-		table.insert(self.ChatBuffer, self.ChatCarat+1, name)
-		self.ChatCarat = self.ChatCarat + 1
+		if #self.ChatBuffer < MAX_CHAT_LENGTH then
+			table.insert(self.ChatBuffer, self.ChatCarat+1, name)
+			self.ChatCarat = self.ChatCarat + 1
+		end
 	end
 
 end

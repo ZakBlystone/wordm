@@ -8,24 +8,33 @@ function meta:Init()
 	self.time = 0
 	self.eval = {}
 	self.finished = false
+
 	return self
 
 end
 
-function meta:Draw( x, y, centered, mulAlpha, noanim )
+function meta:Draw( x, y, small, mulAlpha )
 
-	if self.done then return end
+	if self.done then return 0,0 end
 
 	local fast = false
 	local sc = self.score
 	local time = 0
 	local alpha = 1 * (mulAlpha or 1)
+	local total = 0
+	local totalx = 10
 
-	y = y - 100
+	--small = true
+
+	local mainFont = small and "WordScoreFont" or "WordAmmoFont"
+	local totalFont = small and "DermaLarge" or "WordScoreTotalFont"
+	local scoreFont = small and "Default" or "WordScoreFont"
+	local nameFont = "WordAmmoFont"
+	local centered = not small
 
 	self.time = self.time + FrameTime()
 
-	if not noanim then
+	if not small then
 
 		if self.time >= 1 then
 			if not self.finished then
@@ -50,7 +59,7 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 		
 		if self.finished then
 
-			alpha = 1 - self.time
+			alpha = math.max(1.2 - self.time, 0)
 
 			local dt = FrameTime()
 			for k, e in ipairs(self.layout) do
@@ -69,11 +78,17 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 
 	end
 
+	surface.SetFont(totalFont)
 
-	surface.SetFont("WordAmmoFont")
+	local ttx = self.time * 2 * (#sc.words + 1)
+	for k, w in ipairs(sc.words) do
+		if ttx > k then total = total + w.score end
+	end
 
-	local spw = surface.GetTextSize(" ")
+	local totalw = surface.GetTextSize("[" .. total .. "]")
+	total = 0
 
+	surface.SetFont(mainFont)
 	surface.SetTextColor(255,255,255,255*alpha)
 
 	local str = sc.phrase
@@ -83,15 +98,40 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 		y = y - th/2
 	end
 
-	--surface.SetTextColor(255,255,255,100*alpha)
-	--surface.SetTextPos(x, y-50)
-	--surface.DrawText( sc.phrase )
+	local padding = 5
+	local finalw, finalh = tw + totalw + totalx, th + (small and 10 or 20)
+	local extraw = 0
 
-	if #sc.words > 8 then
-		fast = true
+	local namestr
+	if small then
+		namestr = (IsValid(self.ply) and self.ply:Nick() or "") .. ": "
+		surface.SetFont(nameFont)
+		
+		extraw = surface.GetTextSize(namestr)
+
+		finalw = finalw + extraw
 	end
 
-	local ttx = self.time * 2 * (#sc.words + 1)
+	x = x + padding
+	y = y + padding
+
+	finalw = finalw + padding*2
+	finalh = finalh + padding*2
+
+	if not small then
+		surface.SetDrawColor(0,0,0,150 * alpha)
+	else
+		surface.SetDrawColor(0,0,0,80 * alpha)
+	end
+	surface.DrawRect(x-padding,y-padding,finalw,finalh)
+
+	if small then
+		surface.SetTextPos(x, y)
+		surface.DrawText(namestr)
+		x = x + extraw
+	end
+
+	if #sc.words > 8 then fast = true end
 	for k, w in ipairs(sc.words) do
 
 		local eval = ttx > k
@@ -101,34 +141,38 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 			cr,cg,cb = 255,255,255
 		else
 			if not self.eval[k] then
-				if not noanim then
+				if not small then
 					if fast and k ~= #sc.words then
-						surface.PlaySound("wordm/word_eval2.wav")
+						LocalPlayer():EmitSound("wordm/word_eval2.wav", 75, 100 - (w.score or 25) * 2)
+						--surface.PlaySound("wordm/word_eval2.wav")
 					else
-						surface.PlaySound("wordm/word_eval.wav")
+						LocalPlayer():EmitSound("wordm/word_eval.wav", 75, 100 - (w.score or 25) * 2)
+						--surface.PlaySound("wordm/word_eval.wav")
 					end
 				end
 				if k == #sc.words then self.evaldone = true end
 				self.eval[k] = true
 			end
+
+			total = total + w.score
 		end
 
 		surface.SetTextColor(cr,cg,cb,255*alpha)
-		surface.SetFont("WordAmmoFont")
+		surface.SetFont(mainFont)
 		local wstr = sc.phrase:sub(w.first, w.last)
 		local ww, wh = surface.GetTextSize(wstr)
 		surface.SetTextPos(x, y)
 		surface.DrawText( wstr )
 
 		if eval then
-			local b = y + 30
-			local d = 8
+			local b = small and y + 20 or y + 30
+			local d = small and 4 or 8
 			surface.SetDrawColor(cr,cg,cb,255*alpha)
 			surface.DrawLine(x-1, b, x-1, b + d)
 			surface.DrawLine(x+1+ww, b, x+1+ww, b + d)
 			surface.DrawLine(x-1, b + d, x+ww+1, b + d)
 
-			surface.SetFont("WordScoreFont")
+			surface.SetFont(scoreFont)
 			local sct = tostring(w.score)
 			local scw, sch = surface.GetTextSize(sct)
 			surface.SetTextPos(x+(ww-scw)/2, b+d)
@@ -141,7 +185,7 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 		local nf = n and n.first or string.len(sc.phrase)+1
 		if nf > w.last + 1 then
 
-			surface.SetFont("WordAmmoFont")
+			surface.SetFont(mainFont)
 			local wstr = sc.phrase:sub(w.last+1, nf-1)
 			local ww, wh = surface.GetTextSize(wstr)
 			surface.SetTextColor(cr,cg,cb,80*alpha)
@@ -152,6 +196,13 @@ function meta:Draw( x, y, centered, mulAlpha, noanim )
 		end
 
 	end
+
+	surface.SetFont(totalFont)
+	surface.SetTextPos(x + totalx, y)
+	surface.SetTextColor(255,255,255,255 * alpha)
+	surface.DrawText("[" .. total .. "]")
+
+	return finalw, finalh
 
 end
 

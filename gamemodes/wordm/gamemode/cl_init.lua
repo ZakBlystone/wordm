@@ -29,6 +29,14 @@ surface.CreateFont( "WordScoreFont", {
 	blursize = 0,
 } )
 
+surface.CreateFont( "WordScoreTotalFont", {
+	font = "Akkurat-Bold",
+	extended = false,
+	size = 52,
+	weight = 0,
+	blursize = 0,
+} )
+
 net.Receive("wordscore_msg", function(len)
 
 	print("RECV WORDSCORE : " .. len)
@@ -98,6 +106,8 @@ function GM:GetWordColor(word)
 
 end
 
+G_WORDSCORE_HISTORY_TIME = 10
+
 function GM:HUDPaint()
 
 	if self:IsChatOpen() then
@@ -107,7 +117,20 @@ function GM:HUDPaint()
 	self:DrawCooldowns()
 
 	if G_TEMP_PHRASESCORE then
-		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2, true )
+		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2 - 100, false )
+	end
+
+	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > 5) do
+		table.remove(G_ALL_PHRASESCORES, 1)
+	end
+
+	local y = 0
+	for i=1, #G_ALL_PHRASESCORES do
+		local p = G_ALL_PHRASESCORES[i]
+		local tx = math.max(p.time - (G_WORDSCORE_HISTORY_TIME-1), 0)
+
+		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8)
+		y = y + (h or 0) + 5
 	end
 
 end
@@ -186,16 +209,28 @@ function GM:DrawCooldowns()
 
 end
 
-G_TEMP_PHRASESCORE = G_TEMP_PHRASESCORE or nil
+G_TEMP_PHRASESCORE = nil
+G_ALL_PHRASESCORES = G_ALL_PHRASESCORES or {}
 
 function GM:ShowPhraseScore( ply, phrase )
 
+	if phrase == nil or #phrase.words == 0 then return end
+
 	if ply == LocalPlayer() then
 		surface.PlaySound("wordm/word_place.wav")
+		G_TEMP_PHRASESCORE = phrasescore.New( ply, phrase )
+		G_ALL_PHRASESCORES[#G_ALL_PHRASESCORES+1] = phrasescore.New( ply, phrase )
 	else
 		surface.PlaySound("wordm/word_place2.wav")
+		G_ALL_PHRASESCORES[#G_ALL_PHRASESCORES+1] = phrasescore.New( ply, phrase )
 	end
 
-	G_TEMP_PHRASESCORE = phrasescore.New( ply, phrase )
+end
+
+function GM:SubmitPhrase( str )
+
+	net.Start("wordsubmit_msg")
+	net.WriteString(str)
+	net.SendToServer()
 
 end

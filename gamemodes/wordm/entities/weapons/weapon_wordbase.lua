@@ -196,7 +196,11 @@ function SWEP:ConsumeWord()
 	if phrase == nil then return end
 
 	local word = phrase.words[1]
-	if word == nil then return end
+	if word == nil then 
+		table.remove(self.Phrases, 1)
+		self.CurrentPhrase = self.Phrases[1]
+		return 
+	end
 
 	-- Skip this word if it is on cooldown
 	if bit.band(word.flags, WORD_COOLDOWN) ~= 0 then
@@ -403,10 +407,10 @@ function SWEP:DrawHUD()
 		local x = self.Shots[i]
 		if x.t > 1 then table.remove(self.Shots,i) continue end
 
-		x.t = x.t + FrameTime()
+		x.t = x.t + FrameTime()/2
 		local a = 1 - math.min(x.t, 1)
 
-		draw.SimpleText(x.score, "WordAmmoFont", ScrW()/2 + 80, ScrH()/2 + x.t * 100, Color(255,255,255,255*a), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		draw.SimpleText(x.score, "WordAmmoFont", ScrW()/2 + 80, ScrH()/2 + x.t * 200, Color(255,255,255,255*a), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 
 	end
 

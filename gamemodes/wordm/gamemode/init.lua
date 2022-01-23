@@ -15,6 +15,7 @@ resource.AddFile("sound/wordm/word_snap.wav")
 
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
+util.AddNetworkString("wordsubmit_msg")
 
 local function SanitizeToAscii(str)
 
@@ -66,7 +67,7 @@ function GM:ComputeWordCooldown( str )
 
 	if string.len(str) <= 4 then return 0 end
 
-	return 2 + string.len(str) * 4
+	return 2 + string.len(str) * 3
 
 end
 
@@ -251,12 +252,12 @@ end
 
 function GM:PlayerSay( ply, text )
 
-	local sanitized = SanitizeToAscii(text)
-	print("SAY: " .. text)
+	--local sanitized = SanitizeToAscii(text)
+	--print("SAY: " .. text)
 
-	if #string.gsub(sanitized, "[%s]", "") == 0 then return text end
-	self:ServerSendPhrase( ply, sanitized )
-	return text
+	--if #string.gsub(sanitized, "[%s]", "") == 0 then return text end
+	--self:ServerSendPhrase( ply, sanitized )
+	return ""
 
 end
 
@@ -280,5 +281,12 @@ net.Receive("wordscore_msg", function(len, ply)
 		ply.pendingPhraseTime = when
 
 	end
+
+end)
+
+net.Receive("wordsubmit_msg", function(len, ply)
+
+	local str = net.ReadString()
+	GAMEMODE:ServerSendPhrase( ply, str )
 
 end)

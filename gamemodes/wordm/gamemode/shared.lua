@@ -44,6 +44,7 @@ function RecvWordScore()
 	t.flags = net.ReadUInt(WORD_BITS)
 	t.first = net.ReadUInt(WORD_POSBITS)
 	t.last = net.ReadUInt(WORD_POSBITS)
+	t.score = 0
 
 	if bit.band(t.flags, WORD_VALID) ~= 0 then
 		t.score = net.ReadUInt(WORD_SCOREBITS)
@@ -83,6 +84,8 @@ end
 function GM:HandlePlayerPhraseSynced( ply, phrase )
 
 	--print("SYNC PHRASE: " .. tostring(phrase.phrase))
+
+	if #phrase.words == 0 then return end
 
 	local weap = ply:GetActiveWeapon()
 	if weap.GivePhrase then
