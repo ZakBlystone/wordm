@@ -140,7 +140,18 @@ function ENT:Think()
 
 		if self:GetGameState() == GAMESTATE_IDLE then
 
-			GAMEMODE:ClearWordBullets()
+			if not self.ClearedStuff then
+
+				self.ClearedStuff = true
+
+				GAMEMODE:ClearWordBullets()
+				LocalPlayer():ConCommand("r_cleardecals")
+
+			end
+
+		else
+
+			self.ClearedStuff = false
 
 		end
 
@@ -159,21 +170,8 @@ function ENT:SetupDataTables()
 	self:NetworkVar( "Int", 0, "GameState" )
 	self:NetworkVar( "Float", 0, "Timer" )
 
-	if CLIENT then
-		self:NetworkVarNotify("GameState", self.OnGameStateChanged)
-	end
-
 end
 
-function ENT:OnGameStateChanged( name, old, new )
-
-	if new == GAMESTATE_IDLE then
-
-		LocalPlayer():ConCommand("r_cleardecals")
-
-	end
-
-end
 
 function ENT:UpdateTransmitState()
 

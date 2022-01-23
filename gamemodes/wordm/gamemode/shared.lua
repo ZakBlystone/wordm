@@ -132,7 +132,8 @@ function GM:GetAllPlayers( playing )
 
 	local out = {}
 	for _,v in ipairs(player.GetAll()) do
-		if v:GetPlaying() == playing then out[#out+1] = v end
+		if v.GetPlaying and v:GetPlaying() == playing then out[#out+1] = v end
+		if not v.GetPlaying and not playing then out[#out+1] = v end
 	end
 	return out
 
