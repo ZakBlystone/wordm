@@ -2,10 +2,13 @@ AddCSLuaFile "cl_init.lua"
 AddCSLuaFile "cl_textfx.lua"
 AddCSLuaFile "cl_chat.lua"
 AddCSLuaFile "cl_phrasescore.lua"
+AddCSLuaFile "cl_mapedit.lua"
+AddCSLuaFile "mathutils.lua"
 AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
 
 include "shared.lua"
+include "sv_mapedit.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
 resource.AddFile("sound/wordm/word_eval.wav")
@@ -44,6 +47,97 @@ if G_WORDLIST == nil then
 	LoadWordTable("words")
 
 	print("Loaded " .. #G_WORDLIST .. " words.")
+
+end
+
+function GM:InitPostEntity()
+
+	local mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
+	if mapdata then
+
+		local data = util.JSONToTable(mapdata)
+		PrintTable(data)
+
+		for _,v in ipairs(data.locked) do
+
+			local entity = ents.GetMapCreatedEntity(tonumber(v))
+			if IsValid(entity) then
+				entity:Fire("Lock")
+			else
+				print("UNABLE TO FIND LOCK ENTITY: " .. tostring( v ))
+			end
+
+		end
+
+		for _,v in ipairs(data.removed) do
+
+			local entity = ents.GetMapCreatedEntity(tonumber(v))
+			if IsValid(entity) then
+				entity:Remove()
+			else
+				print("UNABLE TO FIND REMOVE ENTITY: " .. tostring( v ))
+			end
+
+		end
+
+		for _,v in ipairs(data.spawn) do
+			
+			local entity = ents.Create(v.class)
+			if IsValid(entity) then
+				entity:SetPos( v.pos )
+				entity:SetAngles( v.angles )
+				entity:Spawn()
+			end
+
+		end
+
+	end
+
+	ents.Create("wordm_game"):Spawn()
+
+end
+
+function GM:SelectFurthestSpawn( playing )
+
+	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
+	local players = self:GetAllPlayers( playing )
+
+	if #players == 1 then
+		return spawns[math.random(1,#spawns)]
+	end
+
+	local bestSpawn = nil
+	local bestDist = 0
+	for _,v in ipairs(spawns) do
+
+		local minPlayerDist = math.huge
+		for _,pl in ipairs( players ) do
+			minPlayerDist = math.min( minPlayerDist, pl:GetPos():DistToSqr(v:GetPos()) )
+		end
+
+		if minPlayerDist > bestDist then
+			bestSpawn = v
+			bestDist = minPlayerDist
+		end
+
+	end
+
+	return bestSpawn or spawns[1]
+
+end
+
+function GM:PlayerShouldTakeDamage( ply, attacker )
+
+	if self:GetGameEntity():GetGameState() ~= GAMESTATE_PLAYING then return false end
+
+	if ply:GetPlaying() then return true end
+
+end
+
+function GM:PlayerSelectSpawn( ply )
+
+	local spawn = self:SelectFurthestSpawn( ply:GetPlaying() )
+	return spawn
 
 end
 
@@ -285,6 +379,11 @@ net.Receive("wordscore_msg", function(len, ply)
 end)
 
 net.Receive("wordsubmit_msg", function(len, ply)
+
+	if not ply:GetPlaying() then
+		ply:SetPlaying(true)
+		ply:Spawn()
+	end
 
 	local str = net.ReadString()
 	GAMEMODE:ServerSendPhrase( ply, str )

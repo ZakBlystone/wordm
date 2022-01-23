@@ -1,5 +1,6 @@
 AddCSLuaFile()
 
+include "mathutils.lua"
 include "wordbullets.lua"
 include "player_class/player_common.lua"
 
@@ -20,6 +21,9 @@ WORD_SECRET = 4
 WORD_DUPLICATE = 8
 
 TIME_TO_PHRASE = 0.5
+
+MAPEDIT_SELECT = 0
+MAPEDIT_BITS = 1
 
 function SendWordScore( t )
 
@@ -109,5 +113,21 @@ function GM:PlayerTick( ply, mv )
 		end
 
 	end
+
+end
+
+function GM:GetGameEntity()
+
+	return self.GameEntity
+
+end
+
+function GM:GetAllPlayers( playing )
+
+	local out = {}
+	for _,v in ipairs(player.GetAll()) do
+		if v:GetPlaying() == playing then out[#out+1] = v end
+	end
+	return out
 
 end

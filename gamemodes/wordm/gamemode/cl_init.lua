@@ -2,6 +2,7 @@ include "shared.lua"
 include "cl_textfx.lua"
 include "cl_chat.lua"
 include "cl_phrasescore.lua"
+include "cl_mapedit.lua"
 
 G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
 
@@ -33,6 +34,22 @@ surface.CreateFont( "WordScoreTotalFont", {
 	font = "Akkurat-Bold",
 	extended = false,
 	size = 52,
+	weight = 0,
+	blursize = 0,
+} )
+
+surface.CreateFont( "GameStateTitle", {
+	font = "Akkurat-Bold",
+	extended = false,
+	size = 52,
+	weight = 0,
+	blursize = 0,
+} )
+
+surface.CreateFont( "GameStateSubTitle", {
+	font = "Akkurat-Bold",
+	extended = false,
+	size = 32,
 	weight = 0,
 	blursize = 0,
 } )
@@ -76,6 +93,7 @@ function GM:Think()
 
 	self:ChatThink()
 	self:CooldownThink()
+	self:ThinkMapEdit()
 	--self:UpdateFiredWords()
 
 end
@@ -84,6 +102,7 @@ function GM:PostDrawOpaqueRenderables()
 
 	surface.SetFont( "WordAmmoFont" )
 	self:DrawFiredWords()
+	self:DrawMapEdit()
 
 
 end
@@ -108,7 +127,74 @@ end
 
 G_WORDSCORE_HISTORY_TIME = 10
 
+function GM:DrawGameState()
+
+	local ge = self:GetGameEntity()
+	if not IsValid(ge) then return end
+
+	local title = nil
+	local subtitle = nil
+	local timer = nil
+	local gamestate = ge:GetGameState()
+	if gamestate == GAMESTATE_IDLE then
+
+		title = "IDLE PHASE"
+		subtitle = "Say something to get into the game"
+
+	elseif gamestate == GAMESTATE_COUNTDOWN then
+
+		if LocalPlayer():GetPlaying() then
+
+			title = "GET READY"
+			subtitle = "You are invulnerable for a bit, type some sentences quick!"
+
+		else
+
+			title = "GAME IS STARTING"
+			subtitle = "Type something to join the game, or stay silent to spectate"
+
+		end
+
+		timer = string.FormattedTime( ge:GetTimeRemaining(), "%02i:%02i:%02i" )
+
+	elseif gamestate == GAMESTATE_POSTGAME then
+
+		title = "GAME OVER"
+
+		local activeplayers = self:GetAllPlayers()
+		if #activeplayers > 0 and IsValid(activeplayers[1]) then
+			subtitle = activeplayers[1]:Nick() .. " IS THE WINNER!"
+		else
+			subtitle = "NOBODY WON! :("
+		end
+
+		timer = string.FormattedTime( ge:GetTimeRemaining(), "%02i:%02i:%02i" )
+
+	end
+
+	if title then
+
+		draw.SimpleText(title, "GameStateTitle", ScrW()/2,100, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+	end
+
+	if subtitle then
+		
+		draw.SimpleText(subtitle, "GameStateSubTitle", ScrW()/2,140, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+	end
+
+	if timer then
+
+		draw.SimpleText(timer, "GameStateSubTitle", ScrW()/2,180, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+	end
+
+end
+
 function GM:HUDPaint()
+
+	self:DrawMapEditUI()
 
 	if self:IsChatOpen() then
 		self:DrawChat()
@@ -133,9 +219,15 @@ function GM:HUDPaint()
 		y = y + (h or 0) + 5
 	end
 
+	self:DrawGameState()
+
 end
 
 function GM:PlayerBindPress( ply, bind, pressed, code )
+
+	if self:MapEditBindPress( bind, pressed, code ) then
+		return true
+	end
 
 	if self:IsChatOpen() and pressed then
 		return true
@@ -198,7 +290,7 @@ function GM:DrawCooldowns()
 		local x, y = ScrW() - tw - 10, 10 + (k-1) * 28
 
 
-		surface.SetTextColor(Color(255,180,180,100))
+		surface.SetTextColor(255,180,180,100)
 		surface.SetTextPos(x, y)
 		surface.DrawText(str)
 
