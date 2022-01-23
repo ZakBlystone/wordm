@@ -77,7 +77,8 @@ net.Receive("wordscore_msg", function(len)
 		end
 	end
 
-	if ply ~= LocalPlayer() then
+	local ge = GAMEMODE:GetGameEntity()
+	if IsValid(ge) and ply ~= LocalPlayer() and ge:GetGameState() == GAMESTATE_PLAYING then
 
 		G_PLAYER_PINGS[#G_PLAYER_PINGS+1] = {
 			ply = ply,
