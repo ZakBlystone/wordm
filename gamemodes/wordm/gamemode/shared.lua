@@ -25,6 +25,12 @@ TIME_TO_PHRASE = 0.5
 MAPEDIT_SELECT = 0
 MAPEDIT_BITS = 1
 
+function SanitizeToAscii(str)
+
+	return string.gsub(str, "[^%a%s%p]", "")
+
+end
+
 function SendWordScore( t )
 
 	net.WriteUInt(t.flags, WORD_BITS)

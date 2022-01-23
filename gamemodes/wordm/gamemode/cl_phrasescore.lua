@@ -105,6 +105,12 @@ function meta:Draw( x, y, small, mulAlpha )
 	local namestr
 	if small then
 		namestr = (IsValid(self.ply) and self.ply:Nick() or "") .. ": "
+
+		if not self.sanitizedName then
+			self.sanitizedName = SanitizeToAscii(namestr)
+		end
+		namestr = self.sanitizedName
+
 		surface.SetFont(nameFont)
 		
 		extraw = surface.GetTextSize(namestr)

@@ -20,11 +20,6 @@ util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
 util.AddNetworkString("wordsubmit_msg")
 
-local function SanitizeToAscii(str)
-
-	return string.gsub(str, "[^%a%s%p]", "")
-
-end
 
 G_WORD_COOLDOWN = G_WORD_COOLDOWN or {}
 G_WORD_COOLDOWN = {}
@@ -402,6 +397,7 @@ function GM:ServerSendPhrase( ply, text )
 	net.Start("wordscore_msg")
 	net.WriteFloat(CurTime())
 	net.WriteEntity(ply)
+	net.WriteVector(ply:GetPos())
 	SendPhraseScore( phrase )
 	net.Broadcast()
 

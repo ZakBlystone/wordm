@@ -5,6 +5,7 @@ include "cl_phrasescore.lua"
 include "cl_mapedit.lua"
 
 G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
+G_PLAYER_PINGS = G_PLAYER_PINGS or {}
 
 surface.CreateFont( "WordAmmoFont", {
 	font = "Akkurat-Bold",
@@ -60,6 +61,7 @@ net.Receive("wordscore_msg", function(len)
 
 	local time = net.ReadFloat()
 	local ply = net.ReadEntity()
+	local pos = net.ReadVector()
 	local phrase = RecvPhraseScore()
 
 	ply.pendingPhrase = phrase
@@ -73,6 +75,17 @@ net.Receive("wordscore_msg", function(len)
 		if w.cooldown then
 			GAMEMODE:PostWordCooldown( ply, phrase.phrase:sub(w.first, w.last), w.cooldown )
 		end
+	end
+
+	if ply ~= LocalPlayer() then
+
+		G_PLAYER_PINGS[#G_PLAYER_PINGS+1] = {
+			ply = ply,
+			pos = pos + Vector(0,0,32),
+			time = CurTime(),
+			sanitized = SanitizeToAscii(ply:Nick())
+		}
+
 	end
 
 	GAMEMODE:ShowPhraseScore( ply, phrase )
@@ -186,7 +199,7 @@ function GM:DrawGameState()
 		end
 
 		if IsValid(liveplayer) then
-			subtitle = liveplayer:Nick() .. " IS THE WINNER!"
+			subtitle = SanitizeToAscii( liveplayer:Nick() ) .. " IS THE WINNER!"
 		else
 			subtitle = "NOBODY WON! :("
 		end
@@ -245,6 +258,32 @@ function GM:HUDPaint()
 
 		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8)
 		y = y + (h or 0) + 5
+	end
+
+	surface.SetFont("TargetID")
+	for i=#G_PLAYER_PINGS, 1, -1 do
+		local p = G_PLAYER_PINGS[i]
+		local dt = CurTime() - p.time
+		local alpha = 1 - math.max(dt - 1, 0)
+		if dt > 2 then
+			table.remove(G_PLAYER_PINGS, i)
+		end
+
+		local scr = p.pos:ToScreen()
+		if scr.visible then
+
+			local str = p.sanitized
+			local tw, th = surface.GetTextSize(str)
+
+			surface.SetDrawColor(0,0,0,180 * alpha)
+			surface.DrawRect(scr.x - tw/2 - 2, scr.y - th/2 - 2, tw + 4, th + 4)
+
+			surface.SetTextPos(scr.x - tw/2, scr.y - th/2)
+			surface.SetTextColor(80,255,80,255 * alpha)
+			surface.DrawText(str)
+
+		end
+
 	end
 
 end
