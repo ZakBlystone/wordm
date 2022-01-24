@@ -3,6 +3,7 @@ include "cl_textfx.lua"
 include "cl_chat.lua"
 include "cl_phrasescore.lua"
 include "cl_mapedit.lua"
+include "cl_playereditor.lua"
 
 G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
 G_PLAYER_PINGS = G_PLAYER_PINGS or {}
@@ -399,5 +400,19 @@ function GM:SubmitPhrase( str )
 	net.Start("wordsubmit_msg")
 	net.WriteString(str)
 	net.SendToServer()
+
+end
+
+function GM:ShowHelp() self.bShowingHelp = not self.bShowingHelp end
+function GM:ShowTeam()
+
+	self:OpenPlayerEditor()
+
+end
+
+function GM:HUDShouldDraw( element )
+
+	if element == "CHudDamageIndicator" then return LocalPlayer():Alive() end
+	return true 
 
 end
