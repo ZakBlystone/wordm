@@ -4,6 +4,7 @@ AddCSLuaFile "cl_chat.lua"
 AddCSLuaFile "cl_phrasescore.lua"
 AddCSLuaFile "cl_mapedit.lua"
 AddCSLuaFile "cl_playereditor.lua"
+AddCSLuaFile "player_extension.lua"
 AddCSLuaFile "mathutils.lua"
 AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
@@ -20,6 +21,8 @@ resource.AddFile("sound/wordm/word_snap.wav")
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
 util.AddNetworkString("wordsubmit_msg")
+
+DEFINE_BASECLASS( "gamemode_base" )
 
 
 G_WORD_COOLDOWN = G_WORD_COOLDOWN or {}
@@ -46,6 +49,51 @@ if G_WORDLIST == nil then
 
 end
 
+function GM:DoCleanup()
+
+	game.CleanUpMap( false, { 
+		"env_fire", 
+		"entityflame", 
+		"_firesmoke", 
+		"wordm_game", 
+		"wordm_screen", 
+		"wordm_spawn", 
+		"wordm_spawn_lobby",
+	} )
+
+	GAMEMODE:InitializeMapdata()
+
+end
+
+function GM:InitializeMapdata()
+
+	local data = self.LoadedMapData
+	if data == nil then return end
+
+	for _,v in ipairs(data.locked) do
+
+		local entity = ents.GetMapCreatedEntity(tonumber(v))
+		if IsValid(entity) then
+			entity:Fire("Lock")
+		else
+			print("UNABLE TO FIND LOCK ENTITY: " .. tostring( v ))
+		end
+
+	end
+
+	for _,v in ipairs(data.removed) do
+
+		local entity = ents.GetMapCreatedEntity(tonumber(v))
+		if IsValid(entity) then
+			entity:Remove()
+		else
+			print("UNABLE TO FIND REMOVE ENTITY: " .. tostring( v ))
+		end
+
+	end
+
+end
+
 function GM:InitPostEntity()
 
 	local mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
@@ -54,27 +102,8 @@ function GM:InitPostEntity()
 		local data = util.JSONToTable(mapdata)
 		PrintTable(data)
 
-		for _,v in ipairs(data.locked) do
-
-			local entity = ents.GetMapCreatedEntity(tonumber(v))
-			if IsValid(entity) then
-				entity:Fire("Lock")
-			else
-				print("UNABLE TO FIND LOCK ENTITY: " .. tostring( v ))
-			end
-
-		end
-
-		for _,v in ipairs(data.removed) do
-
-			local entity = ents.GetMapCreatedEntity(tonumber(v))
-			if IsValid(entity) then
-				entity:Remove()
-			else
-				print("UNABLE TO FIND REMOVE ENTITY: " .. tostring( v ))
-			end
-
-		end
+		self.LoadedMapData = data
+		self:InitializeMapdata()
 
 		for _,v in ipairs(data.spawn) do
 			
@@ -97,7 +126,7 @@ function GM:PlayerDeathThink( ply )
 
 	local wantSpawn = ply:KeyDown(IN_ATTACK)
 
-	if ply:GetPlaying() then
+	if ply:IsPlaying() then
 		local state = self:GetGameEntity():GetGameState()
 		if state == GAMESTATE_PLAYING or state == GAMESTATE_POSTGAME then 
 
@@ -123,7 +152,7 @@ end
 function GM:SelectFurthestSpawn( playing )
 
 	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
-	local players = self:GetAllPlayers( playing )
+	local players = self:GetAllPlayers( playing and PLAYER_PLAYING or bit.bor(PLAYER_IDLE, PLAYER_READY) )
 
 	if #players == 1 then
 		return spawns[math.random(1,#spawns)]
@@ -155,20 +184,28 @@ function GM:PlayerShouldTakeDamage( ply, attacker )
 
 	if self:GetGameEntity():GetGameState() ~= GAMESTATE_PLAYING then return false end
 
-	if ply:GetPlaying() then return true end
+	if ply:IsPlaying() then return true end
 
 end
 
 function GM:PlayerSelectSpawn( ply )
 
-	local spawn = self:SelectFurthestSpawn( ply.GetPlaying and ply:GetPlaying() or false )
+	local spawn = self:SelectFurthestSpawn( ply:IsPlaying() )
+
+	if not IsValid(spawn) then
+
+		print("NO SPAWN FOUND, USING DEFAULT")
+		return BaseClass.PlayerSelectSpawn( self, ply )
+
+	end
+
 	return spawn
 
 end
 
 function GM:BecomeSpectator( ply, stay )
 
-	local activePlayers = GAMEMODE:GetAllPlayers( true )
+	local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
 	local spawns = ents.FindByClass("wordm_spawn")
 
 	ply:Spectate(OBS_MODE_ROAMING)
@@ -203,7 +240,7 @@ function GM:PlayerSpawn( ply )
 
 	if self:GetGameEntity():GetGameState() == GAMESTATE_PLAYING then
 
-		if ply.GetPlaying and not ply:GetPlaying() then
+		if not ply:IsPlaying() then
 			self:BecomeSpectator( ply )
 		end
 
@@ -429,6 +466,20 @@ function GM:Think()
 
 end
 
+function GM:KeyPress( ply, key )
+
+	if not IsFirstTimePredicted() then return end
+
+	if self:GetGameEntity():GetGameState() <= GAMESTATE_COUNTDOWN then
+
+		if key == IN_RELOAD then
+			ply:ToggleReady()
+		end
+
+	end
+
+end
+
 net.Receive("wordscore_msg", function(len, ply)
 
 	local when = net.ReadFloat()
@@ -447,10 +498,10 @@ net.Receive("wordsubmit_msg", function(len, ply)
 
 	if (gamestate == GAMESTATE_IDLE or gamestate == GAMESTATE_COUNTDOWN) then
 
-		if not ply:GetPlaying() then
+		--[[if not ply:GetPlaying() then
 			ply:SetPlaying(true)
 			ply:Spawn()
-		end
+		end]]
 
 	end
 

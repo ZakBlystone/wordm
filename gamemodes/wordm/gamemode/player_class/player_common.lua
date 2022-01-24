@@ -40,7 +40,7 @@ function PLAYER:SetupDataTables()
 
 	BaseClass.SetupDataTables( self )
 
-	self.Player:NetworkVar("Bool", 0, "Playing")
+	self.Player:NetworkVar("Int", 0, "State")
 
 end
 

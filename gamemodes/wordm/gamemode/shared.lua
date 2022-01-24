@@ -1,5 +1,6 @@
 AddCSLuaFile()
 
+include "player_extension.lua"
 include "mathutils.lua"
 include "wordbullets.lua"
 include "player_class/player_common.lua"
@@ -128,12 +129,11 @@ function GM:GetGameEntity()
 
 end
 
-function GM:GetAllPlayers( playing )
+function GM:GetAllPlayers( state )
 
 	local out = {}
 	for _,v in ipairs(player.GetAll()) do
-		if v.GetPlaying and v:GetPlaying() == playing then out[#out+1] = v end
-		if not v.GetPlaying and not playing then out[#out+1] = v end
+		if bit.band(v:GetCurrentState(), state) ~= 0 then out[#out+1] = v end
 	end
 	return out
 

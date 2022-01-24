@@ -32,6 +32,13 @@ function GM:ToggleChat()
 
 end
 
+function GM:ClearChatBuffers()
+
+	self.ChatBuffer = {}
+	self.ChatCarat = 0
+
+end
+
 function GM:DrawChat()
 
 	self.ChatFade = math.min(self.ChatFade+FrameTime()*3, 1)
@@ -126,6 +133,19 @@ local ctrlTranslation = {
 
 for i=1, #letters do shiftTranslation[letters[i]] = string.upper(letters[i]) end
 
+function GM:ShouldOverrideChat()
+
+	local ge = self:GetGameEntity()
+	if IsValid(ge) and (ge:GetGameState() == GAMESTATE_COUNTDOWN or ge:GetGameState() == GAMESTATE_PLAYING) then
+
+		return LocalPlayer():IsPlaying() and LocalPlayer():Alive()
+
+	end
+
+	return false
+
+end
+
 function GM:PlayerButtonUp( ply, button )
 
 	if not IsFirstTimePredicted() then return end
@@ -139,13 +159,14 @@ end
 function GM:PlayerButtonDown( ply, button )
 
 	if not IsFirstTimePredicted() then return end
+	if not self:ShouldOverrideChat() then return end
 
 	if not self.ChatOpened then
 
-		if button == KEY_ENTER and not self.RealChatLock then
+		--[[if button == KEY_ENTER and not self.RealChatLock then
 			chat.Open(1)
 			self.RealChatLock = true
-		end
+		end]]
 
 	end
 
@@ -167,7 +188,7 @@ function GM:ChatThink()
 
 	end
 
-	if not LocalPlayer():Alive() then
+	if not self:ShouldOverrideChat() then
 		if self:IsChatOpen() then
 			self:ToggleChat()
 		end
@@ -177,9 +198,9 @@ end
 
 function GM:FinishChat()
 
-	timer.Simple(0.1, function()
+	--[[timer.Simple(0.1, function()
 		self.RealChatLock = false
-	end)
+	end)]]
 
 end
 

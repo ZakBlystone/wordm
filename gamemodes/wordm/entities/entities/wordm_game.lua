@@ -3,13 +3,15 @@ AddCSLuaFile()
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-local sv_gameStartTime = CreateConVar("wordm_gameStartTimer", "30", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
-local sv_gamePostTime = CreateConVar("wordm_gamePostTimer", "10", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
+local sv_gameWaitTime = CreateConVar("wordm_gameWaitTimer", "15", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
+local sv_gameStartTime = CreateConVar("wordm_gameStartTimer", "30", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to let players setup in-game")
+local sv_gamePostTime = CreateConVar("wordm_gamePostTimer", "10", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to let post-game run")
 
 GAMESTATE_IDLE = 0
-GAMESTATE_COUNTDOWN = 1
-GAMESTATE_PLAYING = 2
-GAMESTATE_POSTGAME = 3
+GAMESTATE_WAITING = 1
+GAMESTATE_COUNTDOWN = 2
+GAMESTATE_PLAYING = 3
+GAMESTATE_POSTGAME = 4
 
 function ENT:Initialize()
 
@@ -29,35 +31,61 @@ function ENT:Initialize()
 
 end
 
-function ENT:GotoIdleState()
+function ENT:GotoIdleState( returnedFromGame )
+
+	if CLIENT then return end
 
 	self:SetGameState( GAMESTATE_IDLE )
 
-	local idlePlayers = GAMEMODE:GetAllPlayers( false )
-	for _,v in ipairs(idlePlayers) do
-		v:UnSpectate()
-		v:Spawn()
-	end
+	if returnedFromGame then
+
+		GAMEMODE:DoCleanup()
+
+		local idlePlayers = GAMEMODE:GetAllPlayers( PLAYER_IDLE )
+		for _,v in ipairs(idlePlayers) do
+			v:UnSpectate()
+			v:Spawn()
+		end
 
 
-	local activePlayers = GAMEMODE:GetAllPlayers( true )
-	for _,v in ipairs(activePlayers) do
-		v:SetPlaying(false)
-		v:UnSpectate()
-	end
+		local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
+		for _,v in ipairs(activePlayers) do
+			v:GotoIdle()
+			v:UnSpectate()
+		end
 
-	for _,v in ipairs(activePlayers) do
-		v:Spawn()
+		for _,v in ipairs(activePlayers) do
+			v:Spawn()
+		end
+
 	end
 
 end
 
-function ENT:GotoStartingState()
+function ENT:GotoWaitingState()
 
 	if CLIENT then return end
 
 	if self:GetGameState() ~= GAMESTATE_IDLE then
 		return
+	end
+
+	self:SetTimer( CurTime() + sv_gameWaitTime:GetFloat() )
+	self:SetGameState( GAMESTATE_WAITING )
+
+end
+
+function ENT:GotoCountdownState()
+
+	if CLIENT then return end
+
+	if self:GetGameState() ~= GAMESTATE_WAITING then
+		return
+	end
+
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_READY) ) do
+		v:StartPlaying()
+		v:Spawn()
 	end
 
 	self:SetTimer( CurTime() + sv_gameStartTime:GetFloat() )
@@ -72,7 +100,7 @@ function ENT:GotoPlayingState()
 	self:SetGameState( GAMESTATE_PLAYING )
 
 	-- Make all idle players spectate
-	for _,v in ipairs( GAMEMODE:GetAllPlayers(false) ) do
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_IDLE) ) do
 
 		GAMEMODE:BecomeSpectator( v )
 
@@ -97,10 +125,25 @@ function ENT:Think()
 
 		if state == GAMESTATE_IDLE then
 
-			local activePlayers = GAMEMODE:GetAllPlayers( true )
-			if #activePlayers > 0 then
+			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
+			if #readyPlayers > 0 then
 
-				self:GotoStartingState()
+				self:GotoWaitingState()
+
+			end
+
+		elseif state == GAMESTATE_WAITING then
+
+			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
+			if #readyPlayers == 0 then
+
+				self:GotoIdleState()
+
+			end
+
+			if self:GetTimeRemaining() == 0 then
+
+				self:GotoCountdownState()
 
 			end
 
@@ -114,7 +157,7 @@ function ENT:Think()
 
 		elseif state == GAMESTATE_PLAYING then
 
-			local activePlayers = GAMEMODE:GetAllPlayers( true )
+			local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
 			local alive = 0
 			for _,v in ipairs(activePlayers) do
 				if v:Alive() then alive = alive + 1 end
@@ -130,7 +173,7 @@ function ENT:Think()
 
 			if self:GetTimeRemaining() == 0 then
 
-				self:GotoIdleState()
+				self:GotoIdleState( true )
 
 			end
 
@@ -145,6 +188,7 @@ function ENT:Think()
 				self.ClearedStuff = true
 
 				GAMEMODE:ClearWordBullets()
+				GAMEMODE:ClearTemporaryUI()
 				LocalPlayer():ConCommand("r_cleardecals")
 
 			end

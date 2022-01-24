@@ -7,6 +7,10 @@ include "cl_playereditor.lua"
 
 G_WORD_COOLDOWNS = G_WORD_COOLDOWNS or {}
 G_PLAYER_PINGS = G_PLAYER_PINGS or {}
+G_TEMP_PHRASESCORE = nil
+G_ALL_PHRASESCORES = G_ALL_PHRASESCORES or {}
+G_WORDSCORE_HISTORY_TIME = 30
+G_WORDSCORE_HISTORY_MAX = 12
 
 surface.CreateFont( "WordAmmoFont", {
 	font = "Akkurat-Bold",
@@ -145,8 +149,6 @@ function GM:GetWordColor(word)
 
 end
 
-G_WORDSCORE_HISTORY_TIME = 15
-
 local gradient_mat = Material("vgui/gradient_down")
 
 local function FormatTimeGood(t)
@@ -157,6 +159,8 @@ local function FormatTimeGood(t)
 	return ("%02i:%02i.%02i"):format(minutes, seconds, hundredths)
 
 end
+
+local clickToJoinText = "Press '" .. input.LookupBinding("+reload"):upper() .. "' to join"
 
 function GM:DrawGameState()
 
@@ -169,15 +173,31 @@ function GM:DrawGameState()
 	local gamestate = ge:GetGameState()
 	if gamestate == GAMESTATE_IDLE then
 
-		title = "IDLE PHASE"
-		subtitle = "Say something to get into the game"
+		title = "WAITING FOR PLAYERS"
+		subtitle = clickToJoinText
+
+		if LocalPlayer():IsReady() then
+			subtitle = "You are READY, please wait for someone else"
+		end
+
+	elseif gamestate == GAMESTATE_WAITING then
+
+		title = "STARTING"
+
+		if LocalPlayer():IsReady() then
+			subtitle = "You are READY, game starting..."
+		else
+			subtitle = clickToJoinText
+		end
+
+		timer = FormatTimeGood( ge:GetTimeRemaining() )
 
 	elseif gamestate == GAMESTATE_COUNTDOWN then
 
-		if LocalPlayer():GetPlaying() then
+		if LocalPlayer():IsPlaying() then
 
 			title = "GET READY"
-			subtitle = "You are invulnerable for a bit, type some sentences quick!"
+			subtitle = "You are invulnerable for a bit, type some sentences in chat quick!"
 
 		else
 
@@ -190,7 +210,7 @@ function GM:DrawGameState()
 
 	elseif gamestate == GAMESTATE_PLAYING then
 
-		if not LocalPlayer():GetPlaying() then
+		if not LocalPlayer():IsPlaying() then
 
 			title = "YOU ARE SPECTATING"
 			subtitle = "Wait until the next game to join"
@@ -206,7 +226,7 @@ function GM:DrawGameState()
 
 		title = "GAME OVER"
 
-		local activeplayers = self:GetAllPlayers(true)
+		local activeplayers = self:GetAllPlayers( PLAYER_PLAYING )
 		local liveplayer = nil
 		if #activeplayers > 0 then
 			for _,v in ipairs(activeplayers) do
@@ -250,7 +270,7 @@ function GM:DrawGameState()
 
 		if not self.bShowingHelp then
 			draw.SimpleText("Press " .. input.LookupBinding("gm_showhelp") .. " for help", "GameStateSubTitle", 30, 30, Color(255,255,255,255))
-			draw.SimpleText("Press Enter for regular chat", "GameStateSubTitle", 30, 60, Color(255,255,255,255))
+			--draw.SimpleText("Press Enter for regular chat", "GameStateSubTitle", 30, 60, Color(255,255,255,255))
 		end
 
 	end
@@ -281,9 +301,9 @@ function GM:HUDPaint()
 
 	self:DrawHelp()
 
-	if LocalPlayer().GetPlaying and LocalPlayer():GetPlaying() then
+	if LocalPlayer():IsPlaying() then
 
-		for _,v in ipairs( self:GetAllPlayers(true) ) do
+		for _,v in ipairs( self:GetAllPlayers( PLAYER_PLAYING ) ) do
 
 			local tr = util.TraceHull( {
 				start = EyePos(),
@@ -329,7 +349,7 @@ function GM:DrawPhrases()
 		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2 - 100, false )
 	end
 
-	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > 8) do
+	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > G_WORDSCORE_HISTORY_MAX) do
 		table.remove(G_ALL_PHRASESCORES, 1)
 	end
 
@@ -337,8 +357,10 @@ function GM:DrawPhrases()
 	for i=1, #G_ALL_PHRASESCORES do
 		local p = G_ALL_PHRASESCORES[i]
 		local tx = math.max(p.time - (G_WORDSCORE_HISTORY_TIME-1), 0)
+		local fade = math.max(math.min(p.time-1, 1), 0)
+		local fadex = 1 - fade * .5
 
-		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8)
+		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8 * fadex)
 		y = y + (h or 0) + 5
 	end
 
@@ -470,14 +492,18 @@ function GM:PlayerBindPress( ply, bind, pressed, code )
 		return true
 	end
 
-	if bind == "messagemode" or bind == "messagemode2" then
+	if self:ShouldOverrideChat() then
 
-		if pressed then 
-			self:ToggleChat() 
-		else
-			self:FocusChat()
+		if bind == "messagemode" or bind == "messagemode2" then
+
+			if pressed then 
+				self:ToggleChat() 
+			else
+				self:FocusChat()
+			end
+			return true
+
 		end
-		return true
 
 	end
 
@@ -538,9 +564,6 @@ function GM:DrawCooldowns()
 
 end
 
-G_TEMP_PHRASESCORE = nil
-G_ALL_PHRASESCORES = G_ALL_PHRASESCORES or {}
-
 function GM:ShowPhraseScore( ply, phrase )
 
 	if phrase == nil or #phrase.words == 0 then return end
@@ -583,6 +606,17 @@ function GM:HUDShouldDraw( element )
 
 	if element == "CHudDamageIndicator" then return LocalPlayer():Alive() end
 	return true 
+
+end
+
+function GM:ClearTemporaryUI()
+
+	G_WORD_COOLDOWNS = {}
+	G_PLAYER_PINGS = {}
+	G_ALL_PHRASESCORES = {}
+	G_TEMP_PHRASESCORE = nil
+
+	self:ClearChatBuffers()
 
 end
 
