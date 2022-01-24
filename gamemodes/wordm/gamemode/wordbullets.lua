@@ -150,6 +150,12 @@ function wmeta:OnHit( tr )
 				util.DecalEx( m, tr.Entity, tr.HitPos, tr.HitNormal, Color(255,255,255,255), 1, 1 )
 				util.Decal("Blood", tr.HitPos, tr.HitPos + self.dir * 192, tr.Entity)
 
+				if self.owner == LocalPlayer() then
+
+					surface.PlaySound("buttons/button3.wav")
+
+				end
+
 			else
 
 				if tr.SurfaceProps then
@@ -177,6 +183,12 @@ function wmeta:OnHit( tr )
 			tr.Entity:TakeDamageInfo( inf )
 
 			print("DAMAGE ENTITY: " .. tostring(tr.Entity))
+
+			if tr.Entity:IsPlayer() then
+
+				self.owner:SendLua( [[ LocalPlayer():EmitSound("buttons/button3.wav", 75, 180) ]] )
+
+			end
 
 		end
 
@@ -314,7 +326,10 @@ end
 function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 
 	spread = spread or 0
-	local speed = 4000
+	local speed = 80000
+
+	--if idx ~= nil then speed = 4000 end
+	speed = 4000
 
 	damage = (damage or 1) * sv_damageMultiplier:GetFloat()
 
@@ -363,7 +378,7 @@ end
 
 function GM:UpdateFiredWords( ply )
 
-	if CLIENT and #G_WORDS_FIRED > 50 then
+	if CLIENT and #G_WORDS_FIRED > 150 then
 		table.remove(G_WORDS_FIRED, 1)
 	end
 

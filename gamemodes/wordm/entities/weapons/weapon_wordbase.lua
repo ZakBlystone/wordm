@@ -59,6 +59,8 @@ function SWEP:PrimaryAttack()
 
 		self.NextBulletDamage = 0
 		self.NextBulletCount = 1
+		self.NextBulletDelay = 0
+		self.NextBulletSpead = 0
 
 		local wordToFire, phrase = self:ConsumeWord()
 		if wordToFire == nil or wordToFire.score == nil or wordToFire.score == 0 then 
@@ -67,14 +69,18 @@ function SWEP:PrimaryAttack()
 			local str = phrase.phrase:sub(wordToFire.first, wordToFire.last)
 			print(str .. " : SCORE: " .. (wordToFire.score or 0))
 
-			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 7, 105))
+			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 3, 105))
 
 			self.NextBulletDamage = wordToFire.score
 			self.NextBulletStr = str
+			self.NextBulletDelay = (wordToFire.last - wordToFire.first) * 0.1
+
+			local len = math.Clamp(wordToFire.last - wordToFire.first, 1, 4)
+			self.NextBulletSpead = math.Remap(len, 1, 4, 0.2, 0.0)
 
 			if CLIENT then
 				self.Shots[#self.Shots+1] = {
-					score = wordToFire.score * 3,
+					score = wordToFire.score, --* 4,
 					t = 0,
 				}
 			end
@@ -86,8 +92,8 @@ function SWEP:PrimaryAttack()
 				self:GetOwner(), 
 				self:GetOwner():GetShootPos(), 
 				self:GetOwner():GetAimVector(),
-				0,
-				self.NextBulletDamage * 3,
+				self.NextBulletSpead or 0,
+				self.NextBulletDamage, --* 4,
 				self.NextBulletStr or "<word>" )
 
 		end
@@ -102,17 +108,19 @@ function SWEP:PrimaryAttack()
 
 	self:ShootEffects()
 
-	self:SetNextPrimaryFire( CurTime() + 0.4 )
+	self:SetNextPrimaryFire( CurTime() + (self.NextBulletDelay or 0.4) )
 
 end
 
 function SWEP:SecondaryAttack()
 
+	if true then return end
+
 	if IsFirstTimePredicted() then
 
 		local score, count, strings = self:ConsumePhrase()
-		self.NextBulletDamage = math.ceil(score / 4)
-		self.NextBulletSpread = math.Remap(score, 0, 100, 0.3, 0.01)
+		self.NextBulletDamage = math.ceil(score / 4) * 2
+		self.NextBulletSpread = math.Remap(score, 0, 100, 0.3, 0.06)
 		self.NextBulletCount = count
 		self.NextBulletStrings = strings
 
@@ -139,7 +147,7 @@ function SWEP:SecondaryAttack()
 					self:GetOwner():GetShootPos(), 
 					self:GetOwner():GetAimVector(),
 					spread,
-					self.NextBulletDamage * 3,
+					self.NextBulletDamage * 2,
 					self.NextBulletStrings[i] or "<word>",
 					i )
 

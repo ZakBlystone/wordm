@@ -145,7 +145,7 @@ function GM:GetWordColor(word)
 
 end
 
-G_WORDSCORE_HISTORY_TIME = 10
+G_WORDSCORE_HISTORY_TIME = 15
 
 local gradient_mat = Material("vgui/gradient_down")
 
@@ -250,7 +250,7 @@ function GM:DrawGameState()
 
 		if not self.bShowingHelp then
 			draw.SimpleText("Press " .. input.LookupBinding("gm_showhelp") .. " for help", "GameStateSubTitle", 30, 30, Color(255,255,255,255))
-			draw.SimpleText("Press " .. input.LookupBinding("gm_showteam") .. " to change your player model", "GameStateSubTitle", 30, 60, Color(255,255,255,255))
+			draw.SimpleText("Press Enter for regular chat", "GameStateSubTitle", 30, 60, Color(255,255,255,255))
 		end
 
 	end
@@ -259,6 +259,11 @@ end
 
 function GM:HUDPaint()
 
+	local ge = self:GetGameEntity()
+	if not IsValid(ge) then return end
+
+	local gamestate = ge:GetGameState()
+
 	self:DrawGameState()
 	self:DrawMapEditUI()
 
@@ -266,10 +271,55 @@ function GM:HUDPaint()
 		self:DrawChat()
 	end
 
-	self:DrawCooldowns()
-	self:DrawPhrases()
-	self:DrawPings()
+	if gamestate ~= GAMESTATE_IDLE then
+
+		self:DrawCooldowns()
+		self:DrawPhrases()
+		self:DrawPings()
+
+	end
+
 	self:DrawHelp()
+
+	if LocalPlayer().GetPlaying and LocalPlayer():GetPlaying() then
+
+		for _,v in ipairs( self:GetAllPlayers(true) ) do
+
+			local tr = util.TraceHull( {
+				start = EyePos(),
+				endpos = v:GetPos() + Vector(0,0,30),
+				filter = LocalPlayer(),
+				mins = Vector(-4,-4,-4),
+				maxs = Vector(4,4,4),
+			} )
+
+			if tr.Hit and tr.Entity == v then
+
+				local scr = (v:GetPos() + Vector(0,0,92)):ToScreen()
+				if scr.visible then
+
+					surface.SetFont("DermaLarge")
+					local str = v:Nick()
+					local tw, th = surface.GetTextSize(str)
+					surface.SetTextColor(255,255,255,80)
+					surface.SetTextPos( scr.x - tw/2, scr.y - th/2 - 10 )
+					surface.DrawText( str )
+
+					local hp = math.max(v:Health(), 0)/100
+
+					surface.SetDrawColor(100,100,100,80)
+					surface.DrawRect(scr.x-100,scr.y-10,200,20)
+
+					surface.SetDrawColor(255,255,255,128)
+					surface.DrawRect(scr.x-100,scr.y-5,200 * hp,10)
+
+				end
+
+			end
+
+		end
+
+	end
 
 end
 
@@ -279,7 +329,7 @@ function GM:DrawPhrases()
 		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2 - 100, false )
 	end
 
-	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > 5) do
+	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > 8) do
 		table.remove(G_ALL_PHRASESCORES, 1)
 	end
 
@@ -326,7 +376,7 @@ end
 
 
 local HelpText = [[
-	<font=HelpTitle>WorDm</font>
+	<font=HelpTitle>WorDM</font>
 	<font=HelpSubTitle><colour=200,200,200,255>A gamemode by Kazditi</colour></font>
 	<font=HelpSubTitle><colour=120,120,120,255>"A stick and stone can be ok, but words are ALWAYS hurt you."</colour></font>
 	<font=HelpDetails>
@@ -352,10 +402,10 @@ local HelpText = [[
 
 
 	<font=HelpSubTitle>Credits:</font>
-	<font=HelpDetails>Game by Kazditi</font>
 	<font=HelpDetails>Playtesters:</font>
 	<colour=200,200,200,255>
 	<font=HelpRow> - Muffin/ashii</font>
+	<font=HelpRow> - Foohy</font>
 	</colour>
 ]]
 
@@ -535,3 +585,6 @@ function GM:HUDShouldDraw( element )
 	return true 
 
 end
+
+-- Some addon has this, dunno why, removing it
+hook.Remove( "PlayerBindPress", "webbrowser" )

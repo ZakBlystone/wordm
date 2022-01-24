@@ -220,7 +220,7 @@ function GM:ShowSpare2( ply ) end
 
 function GM:ComputeWordCooldown( str )
 
-	if string.len(str) <= 4 then return 0 end
+	if string.len(str) <= 3 then return 0 end
 
 	return 2 + string.len(str) * 3
 
@@ -249,7 +249,7 @@ end
 
 concommand.Add("giveWords", function(p,c,a)
 
-	if not p:IsAdmin() then return end
+	if p.IsAdmin ~= nil and not p:IsAdmin() then return end
 
 	local num = tonumber(a[1]) or 1
 	local who = a[2]
@@ -270,7 +270,7 @@ end)
 
 concommand.Add("addWords", function(p,c,a)
 
-	if not p:IsAdmin() then return end
+	if p.IsAdmin ~= nil and not p:IsAdmin() then return end
 
 	for _,v in ipairs(a) do
 
@@ -319,7 +319,7 @@ function GM:ScoreWord( word, applyCooldown )
 	end
 
 	info.flags = flags
-	info.score = score
+	info.score = score * 4
 	info.first = word.first
 	info.last = word.last
 	return info
@@ -413,7 +413,7 @@ function GM:PlayerSay( ply, text )
 
 	--if #string.gsub(sanitized, "[%s]", "") == 0 then return text end
 	--self:ServerSendPhrase( ply, sanitized )
-	return ""
+	return text
 
 end
 
@@ -442,12 +442,20 @@ end)
 
 net.Receive("wordsubmit_msg", function(len, ply)
 
-	if not ply:GetPlaying() then
-		ply:SetPlaying(true)
-		ply:Spawn()
+	local ge = GAMEMODE:GetGameEntity()
+	local gamestate = ge:GetGameState()
+
+	if (gamestate == GAMESTATE_IDLE or gamestate == GAMESTATE_COUNTDOWN) then
+
+		if not ply:GetPlaying() then
+			ply:SetPlaying(true)
+			ply:Spawn()
+		end
+
 	end
 
-	local str = net.ReadString()
-	GAMEMODE:ServerSendPhrase( ply, str )
+		local str = net.ReadString()
+		GAMEMODE:ServerSendPhrase( ply, str )
+
 
 end)

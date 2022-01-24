@@ -140,6 +140,15 @@ function GM:PlayerButtonDown( ply, button )
 
 	if not IsFirstTimePredicted() then return end
 
+	if not self.ChatOpened then
+
+		if button == KEY_ENTER and not self.RealChatLock then
+			chat.Open(1)
+			self.RealChatLock = true
+		end
+
+	end
+
 	if not self.ChatOpened or not self.ChatLive then return end
 
 	self:SendCodeToChatBuffer(button)
@@ -163,6 +172,14 @@ function GM:ChatThink()
 			self:ToggleChat()
 		end
 	end
+
+end
+
+function GM:FinishChat()
+
+	timer.Simple(0.1, function()
+		self.RealChatLock = false
+	end)
 
 end
 
