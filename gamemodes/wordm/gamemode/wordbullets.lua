@@ -72,7 +72,7 @@ function wmeta:Move()
 		if tr.Hit then
 			endpos = tr.HitPos
 
-			print("HIT: " .. tostring(CurTime()))
+			--print("HIT: " .. tostring(CurTime()))
 
 			if not self.hit then
 				self.hit = tr
@@ -113,6 +113,16 @@ function wmeta:OnHit( tr )
 			local mtx = tr.Entity:GetBoneMatrix( tr.HitBoxBone )
 			mtx:Invert()
 			self.attachBone = tr.HitBoxBone
+			self.attach = tr.Entity
+			self.attachLocal = mtx * tr.HitPos
+
+			mtx:SetTranslation(zerovector)
+			self.attachLocalDir = mtx * self.dir
+		else
+			local mtx = Matrix()
+			mtx:SetTranslation(tr.Entity:GetPos())
+			mtx:SetAngles(tr.Entity:GetAngles())
+			mtx:Invert()
 			self.attach = tr.Entity
 			self.attachLocal = mtx * tr.HitPos
 
@@ -248,6 +258,7 @@ local _final = Vector()
 local _rotated = Angle()
 local _identity = Matrix()
 _identity:Identity()
+local _attachMtx = Matrix()
 
 function wmeta:Draw()
 
@@ -257,7 +268,11 @@ function wmeta:Draw()
 		if self.attach == LocalPlayer() then return end
 
 		local mtx = self.attach:GetBoneMatrix( self.attachBone )
-		if mtx == nil then self.attach = nil return end
+		if mtx == nil then
+			_attachMtx:SetTranslation( self.attach:GetPos() )
+			_attachMtx:SetAngles( self.attach:GetAngles() )
+			mtx = _attachMtx
+		end
 		self.pos = mtx * self.attachLocal
 
 		mtx:SetTranslation(zerovector)
