@@ -27,6 +27,7 @@ end
 
 function ENT:Draw()
 
+	self:DestroyShadow()
 	--self:DrawModel()
 
 end

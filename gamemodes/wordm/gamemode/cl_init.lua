@@ -202,7 +202,7 @@ function GM:DrawGameState()
 		else
 
 			title = "GAME IS STARTING"
-			subtitle = "Type something to join the game, or stay silent to spectate"
+			subtitle = "Wait until the next game to join"
 
 		end
 
@@ -301,39 +301,47 @@ function GM:HUDPaint()
 
 	self:DrawHelp()
 
+	--draw.SimpleText( "State Flags: " .. tostring( LocalPlayer():GetCurrentState() ), "DermaDefault", 300, 300 )
+
 	if LocalPlayer():IsPlaying() then
 
-		for _,v in ipairs( self:GetAllPlayers( PLAYER_PLAYING ) ) do
+		self:DrawHealthBars()
 
-			local tr = util.TraceHull( {
-				start = EyePos(),
-				endpos = v:GetPos() + Vector(0,0,30),
-				filter = LocalPlayer(),
-				mins = Vector(-4,-4,-4),
-				maxs = Vector(4,4,4),
-			} )
+	end
 
-			if tr.Hit and tr.Entity == v then
+end
 
-				local scr = (v:GetPos() + Vector(0,0,92)):ToScreen()
-				if scr.visible then
+function GM:DrawHealthBars()
 
-					surface.SetFont("DermaLarge")
-					local str = v:Nick()
-					local tw, th = surface.GetTextSize(str)
-					surface.SetTextColor(255,255,255,80)
-					surface.SetTextPos( scr.x - tw/2, scr.y - th/2 - 10 )
-					surface.DrawText( str )
+	for _,v in ipairs( self:GetAllPlayers( PLAYER_PLAYING ) ) do
 
-					local hp = math.max(v:Health(), 0)/100
+		local tr = util.TraceHull( {
+			start = EyePos(),
+			endpos = v:GetPos() + Vector(0,0,30),
+			filter = LocalPlayer(),
+			mins = Vector(-4,-4,-4),
+			maxs = Vector(4,4,4),
+		} )
 
-					surface.SetDrawColor(100,100,100,80)
-					surface.DrawRect(scr.x-100,scr.y-10,200,20)
+		if tr.Hit and tr.Entity == v then
 
-					surface.SetDrawColor(255,255,255,128)
-					surface.DrawRect(scr.x-100,scr.y-5,200 * hp,10)
+			local scr = (v:GetPos() + Vector(0,0,92)):ToScreen()
+			if scr.visible then
 
-				end
+				surface.SetFont("DermaLarge")
+				local str = v:Nick()
+				local tw, th = surface.GetTextSize(str)
+				surface.SetTextColor(255,255,255,80)
+				surface.SetTextPos( scr.x - tw/2, scr.y - th/2 - 10 )
+				surface.DrawText( str )
+
+				local hp = math.max(v:Health(), 0)/100
+
+				surface.SetDrawColor(100,100,100,80)
+				surface.DrawRect(scr.x-100,scr.y-10,200,20)
+
+				surface.SetDrawColor(255,255,255,128)
+				surface.DrawRect(scr.x-100,scr.y-5,200 * hp,10)
 
 			end
 

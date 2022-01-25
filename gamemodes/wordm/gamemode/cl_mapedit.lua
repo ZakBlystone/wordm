@@ -30,6 +30,16 @@ function GM:DrawMapEditUI()
 
 	end
 
+	local lobbySpawns = 0
+	local spawns = 0
+	for _,v in ipairs(state.local_ents) do
+		if v.type == "wordm_spawn" then spawns = spawns + 1 end
+		if v.type == "wordm_spawn_lobby" then lobbySpawns = lobbySpawns + 1 end
+	end
+
+	draw.SimpleText("spawns: " .. spawns, "DermaDefault", 10, 400, Color(255,10,10,255) )
+	draw.SimpleText("lobby_spawns: " .. lobbySpawns, "DermaDefault", 10, 420, Color(255,10,10,255) )
+
 end
 
 local function DrawEntBox(e, col)

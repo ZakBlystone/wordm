@@ -61,15 +61,18 @@ function SWEP:PrimaryAttack()
 		self.NextBulletCount = 1
 		self.NextBulletDelay = 0
 		self.NextBulletSpead = 0
+		self.LastFireTime = self.LastFireTime or 0
 
 		local wordToFire, phrase = self:ConsumeWord()
-		if wordToFire == nil or wordToFire.score == nil or wordToFire.score == 0 then 
-			self:EmitSound(self.Primary.Empty, 75, 100)
+		if wordToFire == nil or wordToFire.score == nil or wordToFire.score == 0 then
+			if self.LastFireTime + 0.5 < CurTime() then
+				self:EmitSound(self.Primary.Empty, 75, 100)
+			end
 		else
 			local str = phrase.phrase:sub(wordToFire.first, wordToFire.last)
 			print(str .. " : SCORE: " .. (wordToFire.score or 0))
 
-			self:EmitSound(self.Primary.Sound, 75, 120 - math.min(wordToFire.score * 3, 105))
+			self:EmitSound(self.Primary.Sound, 75, 140 - math.min(wordToFire.score * 2, 105))
 
 			self.NextBulletDamage = wordToFire.score
 			self.NextBulletStr = str
@@ -77,6 +80,7 @@ function SWEP:PrimaryAttack()
 
 			local len = math.Clamp(wordToFire.last - wordToFire.first, 1, 4)
 			self.NextBulletSpead = math.Remap(len, 1, 4, 0.2, 0.0)
+			self.LastFireTime = CurTime()
 
 			if CLIENT then
 				self.Shots[#self.Shots+1] = {
@@ -459,4 +463,75 @@ function SWEP:DoDrawCrosshair( x, y )
 
 	--surface.DrawOutlinedRect( x - 32, y - 32, 64, 64 )
 	return true
+end
+
+function SWEP:PreDrawViewModel()
+
+
+
+end
+
+function SWEP:ViewModelDrawn()
+
+
+end
+
+local _rotated = Angle()
+
+function SWEP:PostDrawViewModel( vm, weapon, ply )
+
+	--[[for i=1, self:GetOwner():GetViewModel():GetBoneCount() do
+		print( i, self:GetOwner():GetViewModel():GetBoneName(i))
+	end]]
+
+	local phrase = self.CurrentPhrase
+	if phrase == nil then return end
+
+	local word = phrase.words[1]
+	if word == nil then return end
+
+	local cr,cg,cb = GAMEMODE:GetWordColor(word)
+	local str = phrase.phrase:sub(word.first, word.last)
+	if not str then return end
+
+	local vm = self:GetOwner():GetViewModel()
+	local bone = vm:LookupBone("357_cylinder")
+	--if not bone then bone = vm:LookupBone("Cylinder") end
+	if not bone then return end
+
+	local b = vm:GetBoneMatrix(bone)
+	local pos = b:GetTranslation()
+	local ang = b:GetAngles()
+
+	surface.SetFont("WordAmmoFont")
+	surface.SetTextColor(cr,cg,cb)
+
+	_rotated:Set(ang)
+	_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+
+	render.SetColorMaterial()
+	--render.DrawBox(pos + ang:Right()*-2, ang, Vector(-1,-1,-1), Vector(1,1,1), Color( 255, 255, 255, 255 ))
+
+	render.CullMode(MATERIAL_CULLMODE_CW)
+
+	cam.Start3D2D( pos - _rotated:Right()*4, _rotated, 0.08 )
+
+	surface.SetTextPos(0, 0)
+	surface.DrawText( str )
+
+	cam.End3D2D()
+
+	render.CullMode(MATERIAL_CULLMODE_CCW)
+
+	_rotated:Set(ang)
+	_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+	_rotated:RotateAroundAxis(_rotated:Right(), 90)
+
+	cam.Start3D2D( pos - _rotated:Right()*1 + _rotated:Up()*3 + _rotated:Forward() * 0.5, _rotated, 0.03 )
+
+	surface.SetTextPos(0, 0)
+	surface.DrawText( tostring(word.score or 0) )
+
+	cam.End3D2D()
+
 end

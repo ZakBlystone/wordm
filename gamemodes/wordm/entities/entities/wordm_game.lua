@@ -83,9 +83,17 @@ function ENT:GotoCountdownState()
 		return
 	end
 
+	-- Put all ready players into the game
 	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_READY) ) do
 		v:StartPlaying()
 		v:Spawn()
+	end
+
+	-- Make all idle players spectate
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_IDLE) ) do
+
+		GAMEMODE:BecomeSpectator( v )
+
 	end
 
 	self:SetTimer( CurTime() + sv_gameStartTime:GetFloat() )
@@ -98,13 +106,6 @@ function ENT:GotoPlayingState()
 	if CLIENT then return end
 
 	self:SetGameState( GAMESTATE_PLAYING )
-
-	-- Make all idle players spectate
-	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_IDLE) ) do
-
-		GAMEMODE:BecomeSpectator( v )
-
-	end
 
 end
 

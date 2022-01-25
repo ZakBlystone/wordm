@@ -51,7 +51,10 @@ end
 
 function GM:DoCleanup()
 
-	game.CleanUpMap( false, { 
+	if self.QueuedCleanup then return end
+	self.QueuedCleanup = true
+
+	local filter = {
 		"env_fire", 
 		"entityflame", 
 		"_firesmoke", 
@@ -59,9 +62,19 @@ function GM:DoCleanup()
 		"wordm_screen", 
 		"wordm_spawn", 
 		"wordm_spawn_lobby",
-	} )
+	}
 
-	GAMEMODE:InitializeMapdata()
+	timer.Simple(0, function()
+		game.CleanUpMap( false, filter )
+		GAMEMODE:InitializeMapdata()
+		GAMEMODE.QueuedCleanup = false
+		for _, p in ipairs(ents.FindByClass("prop_physics*")) do
+			local phys = p:GetPhysicsObject()
+			if IsValid(phys) then
+				phys:Sleep()
+			end
+		end
+	end)
 
 end
 
@@ -154,7 +167,10 @@ function GM:SelectFurthestSpawn( playing )
 	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
 	local players = self:GetAllPlayers( playing and PLAYER_PLAYING or bit.bor(PLAYER_IDLE, PLAYER_READY) )
 
-	if #players == 1 then
+	--print("PCHECK PLAYING: " .. tostring( playing ))
+	--print("PCHECK FLAGS: " .. tostring( playing and PLAYER_PLAYING or bit.bor(PLAYER_IDLE, PLAYER_READY) ))
+
+	if #players <= 1 then
 		return spawns[math.random(1,#spawns)]
 	end
 
@@ -496,17 +512,8 @@ net.Receive("wordsubmit_msg", function(len, ply)
 	local ge = GAMEMODE:GetGameEntity()
 	local gamestate = ge:GetGameState()
 
-	if (gamestate == GAMESTATE_IDLE or gamestate == GAMESTATE_COUNTDOWN) then
-
-		--[[if not ply:GetPlaying() then
-			ply:SetPlaying(true)
-			ply:Spawn()
-		end]]
-
-	end
-
-		local str = net.ReadString()
-		GAMEMODE:ServerSendPhrase( ply, str )
+	local str = net.ReadString()
+	GAMEMODE:ServerSendPhrase( ply, str )
 
 
 end)

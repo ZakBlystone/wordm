@@ -2,9 +2,9 @@
 local meta = FindMetaTable( "Player" )
 if not meta then return end
 
-PLAYER_IDLE = 0
-PLAYER_READY = 1
-PLAYER_PLAYING = 2
+PLAYER_IDLE = 1
+PLAYER_READY = 2
+PLAYER_PLAYING = 4
 
 function meta:GetCurrentState()
 
@@ -15,6 +15,12 @@ function meta:GetCurrentState()
 	end
 
 	return PLAYER_IDLE
+
+end
+
+function meta:IsIdle()
+
+	return bit.band(self:GetCurrentState(), PLAYER_IDLE) ~= 0
 
 end
 
@@ -44,7 +50,6 @@ function meta:ToggleReady()
 			else
 				fl = bit.band(fl, bit.bnot(PLAYER_READY))
 			end
-			print("NEW FLAG: " .. fl)
 			self:SetState( fl )
 
 		end

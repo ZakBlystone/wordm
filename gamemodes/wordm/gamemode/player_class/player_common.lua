@@ -62,6 +62,10 @@ function PLAYER:Init()
 		self:SetModel()
 		self:Loadout()
 
+		if ply:GetState() == 0 then
+			ply:SetState( PLAYER_IDLE )
+		end
+
 		ply:SetWalkSpeed( class.WalkSpeed )
 		ply:SetRunSpeed( class.RunSpeed )
 		ply:SetCrouchedWalkSpeed( class.CrouchedWalkSpeed )
