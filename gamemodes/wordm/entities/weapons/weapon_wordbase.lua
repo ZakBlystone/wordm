@@ -496,7 +496,8 @@ function SWEP:PostDrawViewModel( vm, weapon, ply )
 
 	local vm = self:GetOwner():GetViewModel()
 	local bone = vm:LookupBone("357_cylinder")
-	--if not bone then bone = vm:LookupBone("Cylinder") end
+	local mmod = true
+	if not bone then bone = vm:LookupBone("Cylinder") mmod = false end
 	if not bone then return end
 
 	local b = vm:GetBoneMatrix(bone)
@@ -507,7 +508,12 @@ function SWEP:PostDrawViewModel( vm, weapon, ply )
 	surface.SetTextColor(cr,cg,cb)
 
 	_rotated:Set(ang)
-	_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+	
+	if mmod then
+		_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+	else
+		_rotated:RotateAroundAxis(_rotated:Right(), 90)
+	end
 
 	render.SetColorMaterial()
 	--render.DrawBox(pos + ang:Right()*-2, ang, Vector(-1,-1,-1), Vector(1,1,1), Color( 255, 255, 255, 255 ))
@@ -524,7 +530,11 @@ function SWEP:PostDrawViewModel( vm, weapon, ply )
 	render.CullMode(MATERIAL_CULLMODE_CCW)
 
 	_rotated:Set(ang)
-	_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+	if mmod then
+		_rotated:RotateAroundAxis(_rotated:Forward(), 180)
+	else
+		_rotated:RotateAroundAxis(_rotated:Right(), 90)
+	end
 	_rotated:RotateAroundAxis(_rotated:Right(), 90)
 
 	cam.Start3D2D( pos - _rotated:Right()*1 + _rotated:Up()*3 + _rotated:Forward() * 0.5, _rotated, 0.03 )
