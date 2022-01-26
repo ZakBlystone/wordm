@@ -162,6 +162,13 @@ function GM:PlayerDeathThink( ply )
 
 end
 
+function GM:CanPlayerSuicide( ply )
+
+	if ply:IsPlaying() then return true end
+	return false
+
+end
+
 function GM:SelectFurthestSpawn( playing )
 
 	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
@@ -224,6 +231,7 @@ function GM:BecomeSpectator( ply, stay )
 	local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
 	local spawns = ents.FindByClass("wordm_spawn")
 
+	ply:StripWeapons()
 	ply:Spectate(OBS_MODE_ROAMING)
 
 	if not stay then
@@ -236,7 +244,6 @@ function GM:BecomeSpectator( ply, stay )
 		ply:SetPos( ply:GetPos() + Vector(0,0,64) )
 	end
 
-	ply:StripWeapons()
 
 end
 
@@ -251,16 +258,19 @@ function GM:PlayerLoadout( ply ) end -- Handled by player base
 function GM:PlayerSetModel( ply ) end -- Handled by player base
 function GM:PlayerSpawn( ply )
 
-	player_manager.SetPlayerClass( ply, "player_common" )
-	player_manager.RunClass( ply, "Init" )
-
-	if self:GetGameEntity():GetGameState() == GAMESTATE_PLAYING then
+	local state = self:GetGameEntity():GetGameState()
+	if state == GAMESTATE_PLAYING or state == GAMESTATE_COUNTDOWN then
 
 		if not ply:IsPlaying() then
+			--self.BaseClass.PlayerSpawn( self, ply )
 			self:BecomeSpectator( ply )
+			return
 		end
 
 	end
+
+	player_manager.SetPlayerClass( ply, "player_common" )
+	player_manager.RunClass( ply, "Init" )
 
 	return self.BaseClass.PlayerSpawn( self, ply )
 

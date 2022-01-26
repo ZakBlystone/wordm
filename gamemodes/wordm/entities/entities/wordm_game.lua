@@ -31,6 +31,21 @@ function ENT:Initialize()
 
 end
 
+function ENT:FinishTimer()
+
+	self:SetTimer( CurTime() )
+
+end
+
+concommand.Add("wordm_finishTimer", function(p,c,a)
+
+	if p.IsAdmin ~= nil and not p:IsAdmin() then return end
+
+	GAMEMODE:GetGameEntity():FinishTimer()
+	return
+
+end)
+
 function ENT:GotoIdleState( returnedFromGame )
 
 	if CLIENT then return end
