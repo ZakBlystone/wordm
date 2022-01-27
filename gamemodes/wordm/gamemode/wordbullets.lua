@@ -1,6 +1,12 @@
 local sv_debugWordBullets = CreateConVar("sv_debugwordbullets", "0", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "show network debugging")
 local sv_damageMultiplier = CreateConVar("sv_damageMultiplier", "1", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "modify word-bullet damage")
 
+local cl_hideWordBullets = nil
+
+if CLIENT then
+	cl_hideWordBullets = CreateConVar("cl_hidewordbullets", "0", 0, "hide word bullets")
+end
+
 local function SpreadRandom(x)
 
 	return util.SharedRandom("spread-calc-"..x, -1, 1, CurTime())
@@ -52,6 +58,7 @@ function wmeta:Move()
 	local endpos = self.org + self.dir * t * self.speed
 
 	self.lt = t
+	self.trnum = (self.trnum or 0) + 1
 
 	if not IsValid(self.owner) then 
 		print("NO OWNER")
@@ -80,6 +87,11 @@ function wmeta:Move()
 			end
 
 		end
+
+		if SERVER and sv_debugWordBullets:GetBool() then
+			debugoverlay.Line(tr.StartPos, tr.HitPos, 8, (self.trnum % 2 == 1) and Color( 255, 60, 60 ) or Color( 60, 255, 60 ) )
+		end
+
 	end)
 
 	if not self.owner:IsBot() then self.owner:LagCompensation(false) end
@@ -140,13 +152,14 @@ function wmeta:OnHit( tr )
 				-- keep going
 				self.hit = nil
 				self.brokeEnts[tr.Entity] = true
+				print("SKIP THROUGH")
 
 				return
 			end
 		else
 			-- keep going
 			self.hit = nil
-
+			print("SKIP THROUGH")
 			return
 		end
 
@@ -161,6 +174,7 @@ function wmeta:OnHit( tr )
 				local m = Material("decals/flesh/blood" .. math.random( 1, 5 ))
 				util.DecalEx( m, tr.Entity, tr.HitPos, tr.HitNormal, Color(255,255,255,255), 1, 1 )
 				util.Decal("Blood", tr.HitPos, tr.HitPos + self.dir * 192, tr.Entity)
+				util.Decal("Blood", tr.HitPos, tr.HitPos - Vector(0,0,100), tr.Entity)
 
 				if self.owner == LocalPlayer() then
 
@@ -194,7 +208,9 @@ function wmeta:OnHit( tr )
 			inf:SetDamagePosition( tr.HitPos )
 			tr.Entity:TakeDamageInfo( inf )
 
-			--print("DAMAGE ENTITY: " .. tostring(tr.Entity))
+			if sv_debugWordBullets:GetBool() then
+				print("SERVER DAMAGE ENTITY: " .. tostring(tr.Entity) .. " : " .. tostring(self.damage))
+			end
 
 			if tr.Entity:IsPlayer() then
 
@@ -278,6 +294,8 @@ _identity:Identity()
 local _attachMtx = Matrix()
 
 function wmeta:Draw()
+
+	if cl_hideWordBullets:GetBool() then return end
 
 	local eye = EyePos()
 
