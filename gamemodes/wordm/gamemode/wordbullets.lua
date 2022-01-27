@@ -204,7 +204,7 @@ function wmeta:OnHit( tr )
 			inf:SetDamage( self.damage or 0 )
 			inf:SetDamageType( DMG_BULLET )
 			inf:SetAttacker( self.owner )
-			inf:SetDamageForce( self.dir * (1000 * self.damage) )
+			inf:SetDamageForce( self.dir * (100 * self.damage) )
 			inf:SetDamagePosition( tr.HitPos )
 			tr.Entity:TakeDamageInfo( inf )
 
@@ -213,6 +213,8 @@ function wmeta:OnHit( tr )
 			end
 
 			if tr.Entity:IsPlayer() then
+
+				hook.Run("PlayerTraceAttack", tr.Entity, inf, self.dir, tr)
 
 				self.owner:SendLua( [[ LocalPlayer():EmitSound("buttons/button3.wav", 75, 180) ]] )
 
