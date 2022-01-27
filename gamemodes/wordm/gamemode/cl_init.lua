@@ -10,7 +10,7 @@ G_PLAYER_PINGS = G_PLAYER_PINGS or {}
 G_TEMP_PHRASESCORE = nil
 G_ALL_PHRASESCORES = G_ALL_PHRASESCORES or {}
 G_WORDSCORE_HISTORY_TIME = 30
-G_WORDSCORE_HISTORY_MAX = 12
+G_WORDSCORE_HISTORY_MAX = 5
 
 surface.CreateFont( "WordAmmoFont", {
 	font = "Akkurat-Bold",
@@ -64,6 +64,23 @@ surface.CreateFont( "HelpTitle", { font = "Roboto", size = 72, weight = 1000, an
 surface.CreateFont( "HelpSubTitle", { font = "Roboto", size = 30, weight = 500, antialias = true, } )
 surface.CreateFont( "HelpDetails", { font = "Tahoma", size = 20, weight = 800, antialias = true, } )
 surface.CreateFont( "HelpRow", { font = "Tahoma", size = 18, weight = 1000, antialias = true, } )
+
+local _permut = {
+	function(a,b,c) return a,b,c end,
+	function(a,b,c) return b,a,c end,
+	function(a,b,c) return c,a,b end,
+	function(a,b,c) return c,b,a end,
+	function(a,b,c) return b,c,a end,
+	function(a,b,c) return a,c,b end,
+}
+
+local function rgb(h,s,v)
+
+	h = h % 360 / 60
+	local x = v * s * math.abs(h % 2 - 1)
+	return _permut[1+math.floor(h)](v,v-x,v-v*s)
+
+end
 
 net.Receive("wordscore_msg", function(len)
 
@@ -299,6 +316,12 @@ function GM:HUDPaint()
 
 	end
 
+	if gamestate == GAMESTATE_WAITING then
+
+		self:DrawReadyPlayers()
+
+	end
+
 	self:DrawHelp()
 
 	--draw.SimpleText( "State Flags: " .. tostring( LocalPlayer():GetCurrentState() ), "DermaDefault", 300, 300 )
@@ -308,6 +331,8 @@ function GM:HUDPaint()
 		self:DrawHealthBars()
 
 	end
+
+	self:DrawDeathCards()
 
 end
 
@@ -329,7 +354,7 @@ function GM:DrawHealthBars()
 			if scr.visible then
 
 				surface.SetFont("DermaLarge")
-				local str = v:Nick()
+				local str = SanitizeToAscii(v:Nick())
 				local tw, th = surface.GetTextSize(str)
 				surface.SetTextColor(255,255,255,80)
 				surface.SetTextPos( scr.x - tw/2, scr.y - th/2 - 10 )
@@ -346,6 +371,32 @@ function GM:DrawHealthBars()
 			end
 
 		end
+
+	end
+
+end
+
+function GM:DrawReadyPlayers()
+
+	for k,v in ipairs(player.GetAll()) do
+
+		local ready = v:IsReady()
+
+		local name = textfx.Builder(SanitizeToAscii(v:Nick()), "WordAmmoFont"):Box(10,2):Color(190,255,100,255)
+		:SetPos(10, ScrH()/4 + k * 50)
+		local readytext = textfx.Builder(ready and "Ready" or "Not Ready", "CooldownWordFont"):Box(10,4)
+		:HAlignTo(name, "after")
+		:VAlignTo(name, "center")
+
+		if ready then
+			readytext:Color(120,255,120,255)
+		else
+			readytext:Color(255,120,120,255)
+		end
+
+		name:Draw()
+		readytext:Draw()
+
 
 	end
 
@@ -404,6 +455,99 @@ function GM:DrawPings()
 
 end
 
+local CardVerbs = {
+	"killed",
+	"destroyed",
+	"decimated",
+	"eliminated",
+	"took out",
+	"deconstructed",
+	"iced",
+	"ended",
+	"put an end to",
+	"dispatched",
+	"terminated",
+	"finished off",
+	"assassinated",
+	"murdered",
+	"wrecked",
+	"annihilated",
+	"eradicated",
+	"wasted",
+	"devestated",
+}
+
+local DeathCard = nil --[[{
+	time = CurTime(),
+	word = ("Anti-intellectualism"):upper(),
+	attacker = "Killer",
+	victim = "Victim",
+	damage = 100,
+	where = "butt",
+	verb = CardVerbs[math.random(1,#CardVerbs)],
+}]]
+
+
+function GM:DrawDeathCard( card )
+
+	if card == nil then return end
+
+	local dt = CurTime() - card.time
+	local alpha = 1
+	local burst = 1 - math.min(dt, 1)
+
+	local duration = 10
+	if dt > duration then alpha = math.max(1 - (dt - duration), 0) end
+	if alpha == 0 then return end
+
+	local screen = textfx.ScreenBox()
+	screen.y = screen.y - (1 - math.pow(burst, 4)) * 100
+
+	local ba = 20 + burst * 200
+	local br,bg,bb = rgb(40,burst,255)
+
+	local attacker = textfx.Builder(card.attacker, "WordAmmoFont"):Box(10,2):Color(190,255,100,alpha*255)
+	local killed = textfx.Builder(card.verb, "CooldownWordFont"):Box(10,4):Color(255,120,120,alpha*255)
+	:HAlignTo(attacker, "after")
+	:VAlignTo(attacker, "center")
+
+	local victim = textfx.Builder(card.victim, "WordAmmoFont"):Box(10,2):Color(190,255,100,alpha*255)
+	:HAlignTo(killed, "after")
+	:VAlignTo(killed, "center")
+
+	local box = textfx.BuilderBox(attacker, killed, victim):Store():HAlignTo(screen, "center")
+	textfx.BuilderShift(box, attacker, killed, victim)
+
+	local with = textfx.Builder(("shot in the %s for %i damage with"):format(card.where, card.damage), "CooldownWordFont"):Box(10,2):Color(255,255,255,alpha*180)
+	:HAlignTo(box, "center")
+	:VAlignTo(attacker, "after")
+
+	local word = textfx.Builder(card.word, "WordAmmoFont"):Box(10,2)
+	:Color(255,255,255,alpha*255)
+	:HAlignTo(box, "center")
+	:VAlignTo(with, "after")
+
+	local box = textfx.BuilderBox(attacker, killed, victim, with, word):Pad(40 - 30 * burst*burst, 10)
+	:Store()
+	:HAlignTo(screen, "center")
+	:VAlignTo(screen, "bottom")
+	:DrawRounded(br,bg,bb,ba*alpha*alpha,8):Pad(-5):DrawRounded(0,0,0,200*alpha,6):Pad(5)
+
+	textfx.BuilderShift(box, attacker, killed, victim, with, word)
+
+	attacker:Draw()
+	killed:Draw()
+	victim:Draw()
+	with:Draw()
+	word:Draw()
+
+end
+
+function GM:DrawDeathCards()
+
+	self:DrawDeathCard(DeathCard)
+
+end
 
 local HelpText = [[
 	<font=HelpTitle>WorDM</font>
@@ -436,6 +580,8 @@ local HelpText = [[
 	<colour=200,200,200,255>
 	<font=HelpRow> - Muffin/ashii</font>
 	<font=HelpRow> - Foohy</font>
+	<font=HelpRow> - Lyo</font>
+	<font=HelpRow> - An Actual Hyena Named Sitkero</font>
 	</colour>
 ]]
 
@@ -627,6 +773,42 @@ function GM:ClearTemporaryUI()
 	self:ClearChatBuffers()
 
 end
+
+local GroupNames = {
+	[HITGROUP_GENERIC] = "body",
+	[HITGROUP_HEAD] = "head",
+	[HITGROUP_CHEST] = "chest",
+	[HITGROUP_STOMACH] = "stomach",
+	[HITGROUP_LEFTARM] = "left arm",
+	[HITGROUP_RIGHTARM] = "right arm",
+	[HITGROUP_LEFTLEG] = "left leg",
+	[HITGROUP_RIGHTLEG] = "right leg",
+	[HITGROUP_GEAR] = "stuff",
+}
+
+net.Receive("worddeath_msg", function()
+
+	local str = net.ReadString()
+	local attacker = net.ReadEntity()
+	local victim = net.ReadEntity()
+	local damage = net.ReadFloat()
+	local hitbox = net.ReadUInt(16)
+
+	local group = GroupNames[victim:GetHitBoxHitGroup(hitbox, 0) or 0]
+
+	local card = {
+		time = CurTime(),
+		word = str:upper(),
+		attacker = SanitizeToAscii(attacker:Nick()),
+		victim = SanitizeToAscii(victim:Nick()),
+		damage = tostring(damage),
+		where = group,
+		verb = CardVerbs[math.random(1,#CardVerbs)],
+	}
+
+	DeathCard = card
+
+end)
 
 -- Some addon has this, dunno why, removing it
 hook.Remove( "PlayerBindPress", "webbrowser" )

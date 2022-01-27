@@ -111,13 +111,15 @@ function wmeta:OnHit( tr )
 
 		if tr.HitBoxBone then
 			local mtx = tr.Entity:GetBoneMatrix( tr.HitBoxBone )
-			mtx:Invert()
-			self.attachBone = tr.HitBoxBone
-			self.attach = tr.Entity
-			self.attachLocal = mtx * tr.HitPos
+			if mtx ~= nil then
+				mtx:Invert()
+				self.attachBone = tr.HitBoxBone
+				self.attach = tr.Entity
+				self.attachLocal = mtx * tr.HitPos
 
-			mtx:SetTranslation(zerovector)
-			self.attachLocalDir = mtx * self.dir
+				mtx:SetTranslation(zerovector)
+				self.attachLocalDir = mtx * self.dir
+			end
 		else
 			local mtx = Matrix()
 			mtx:SetTranslation(tr.Entity:GetPos())
@@ -192,11 +194,23 @@ function wmeta:OnHit( tr )
 			inf:SetDamagePosition( tr.HitPos )
 			tr.Entity:TakeDamageInfo( inf )
 
-			print("DAMAGE ENTITY: " .. tostring(tr.Entity))
+			--print("DAMAGE ENTITY: " .. tostring(tr.Entity))
 
 			if tr.Entity:IsPlayer() then
 
 				self.owner:SendLua( [[ LocalPlayer():EmitSound("buttons/button3.wav", 75, 180) ]] )
+
+				if tr.Entity:Alive() == false then
+
+					net.Start("worddeath_msg")
+					net.WriteString(self.str)
+					net.WriteEntity(self.owner)
+					net.WriteEntity(tr.Entity)
+					net.WriteFloat(self.damage)
+					net.WriteUInt(tr.HitBox, 16)
+					net.Broadcast()
+
+				end
 
 			end
 
@@ -224,7 +238,10 @@ function wmeta:Update()
 		return false
 	end
 
-	if SERVER then print("DONE") return false end
+	if SERVER then 
+		--print("DONE") 
+		return false 
+	end
 
 	return true
 

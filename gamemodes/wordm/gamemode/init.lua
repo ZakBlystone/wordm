@@ -21,6 +21,7 @@ resource.AddFile("sound/wordm/word_snap.wav")
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
 util.AddNetworkString("wordsubmit_msg")
+util.AddNetworkString("worddeath_msg")
 
 DEFINE_BASECLASS( "gamemode_base" )
 
@@ -164,7 +165,11 @@ end
 
 function GM:CanPlayerSuicide( ply )
 
+	local gamestate = GAMEMODE:GetGameEntity():GetGameState()
+
 	if ply:IsPlaying() then return true end
+	if gamestate == GAMESTATE_IDLE then return true end
+	if gamestate == GAMESTATE_PLAYING then return true end
 	return false
 
 end
@@ -181,8 +186,12 @@ function GM:SelectFurthestSpawn( playing )
 		return spawns[math.random(1,#spawns)]
 	end
 
+	local debugClose = false
+
 	local bestSpawn = nil
 	local bestDist = 0
+	if debugClose then bestDist = math.huge end
+
 	for _,v in ipairs(spawns) do
 
 		local minPlayerDist = math.huge
@@ -190,9 +199,17 @@ function GM:SelectFurthestSpawn( playing )
 			minPlayerDist = math.min( minPlayerDist, pl:GetPos():Distance(v:GetPos()) )
 		end
 
-		if minPlayerDist > bestDist then
-			bestSpawn = v
-			bestDist = minPlayerDist
+		if debugClose then
+			if minPlayerDist < 10 then continue end
+			if minPlayerDist < bestDist then
+				bestSpawn = v
+				bestDist = minPlayerDist
+			end
+		else
+			if minPlayerDist > bestDist then
+				bestSpawn = v
+				bestDist = minPlayerDist
+			end
 		end
 
 	end
@@ -394,14 +411,14 @@ function GM:ScorePhrase( text, applyCooldown )
 	local scoring = { phrase = text, words = {} }
 	local words = {}
 
-	print("---PHRASE: " .. tostring(text))
+	--print("---PHRASE: " .. tostring(text))
 
 	local max = 1000
 	local a,b,c = 0,0
 	while true do
 		a,b,c = text:find( "([%w-']+)", b+1 )
 		if not a then break end
-		print("---WORD: " .. tostring(c))
+		--print("---WORD: " .. tostring(c))
 		words[#words+1] = {
 			first = a,
 			last = b,
@@ -456,6 +473,10 @@ function GM:ServerSendPhrase( ply, text )
 
 		self:HandlePlayerPhraseSynced( ply, phrase )
 
+	end
+
+	if tts then
+		tts.TTSOnPlayer(text, ply, 180)
 	end
 
 	net.Start("wordscore_msg")
