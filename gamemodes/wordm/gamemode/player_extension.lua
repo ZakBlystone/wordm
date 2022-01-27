@@ -10,6 +10,8 @@ function meta:GetCurrentState()
 
 	if self.GetState then
 
+		if self:IsBot() then return bit.bor(self:GetState(), PLAYER_READY) end
+
 		return self:GetState()
 
 	end

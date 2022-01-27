@@ -138,13 +138,19 @@ function ENT:Think()
 	if SERVER then
 
 		local state = self:GetGameState()
+		local shouldFreezePlayers = false
 
 		if state == GAMESTATE_IDLE then
 
 			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
 			if #readyPlayers > 0 then
 
-				self:GotoWaitingState()
+				local nonBot = false
+				for _,v in ipairs(readyPlayers) do
+					if not v:IsBot() then nonBot = true end
+				end
+
+				if nonBot then self:GotoWaitingState() end
 
 			end
 
@@ -157,13 +163,15 @@ function ENT:Think()
 
 			end
 
-			if self:GetTimeRemaining() == 0 then
+			if self:GetTimeRemaining() == 0 or #readyPlayers == #player.GetAll() then
 
 				self:GotoCountdownState()
 
 			end
 
 		elseif state == GAMESTATE_COUNTDOWN then
+
+			shouldFreezePlayers = true
 
 			if self:GetTimeRemaining() == 0 then
 
@@ -190,6 +198,20 @@ function ENT:Think()
 			if self:GetTimeRemaining() == 0 then
 
 				self:GotoIdleState( true )
+
+			end
+
+		end
+
+		for _,v in ipairs( GAMEMODE:GetAllPlayers( PLAYER_PLAYING ) ) do
+
+			if shouldFreezePlayers and not v:IsFlagSet(FL_FROZEN) then
+
+				v:AddFlags(FL_FROZEN)
+
+			elseif not shouldFreezePlayers and v:IsFlagSet(FL_FROZEN) then
+
+				v:RemoveFlags(FL_FROZEN)
 
 			end
 
