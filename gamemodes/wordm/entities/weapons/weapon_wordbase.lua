@@ -172,6 +172,12 @@ function SWEP:OnPhraseAdded(phrase)
 
 end
 
+function SWEP:OnPhrasesCleared()
+
+	if CLIENT then self:ComputeHUDLayout() end
+
+end
+
 function SWEP:EjectWord(phrase, consumed)
 
 	local phraseInLayout = nil

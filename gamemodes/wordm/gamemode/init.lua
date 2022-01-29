@@ -279,6 +279,17 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 	ply.deathTime = CurTime()
 	ply.becameSpectator = false
 
+	if ply:IsPlaying() then
+
+		local drop = ents.Create("wordm_drop_notepad")
+		drop:SetPos( ply:GetPos() + Vector(0,0,30) )
+		drop:Spawn()
+		drop:SetPhrases( ply:GetPhrases() )
+
+		ply:ClearPhrases()
+
+	end
+
 end
 
 function GM:PlayerLoadout( ply ) end -- Handled by player base
@@ -405,7 +416,7 @@ function GM:IsValidWord( word )
 
 end
 
-function GM:ScoreWord( word, applyCooldown )
+function GM:ScoreWord( word, applyCooldown, noCooldown )
 
 	local info = {}
 	local flags = 0
@@ -416,8 +427,12 @@ function GM:ScoreWord( word, applyCooldown )
 		flags = flags + WORD_VALID
 
 		if (G_WORD_COOLDOWN[lowered] or 0) - CurTime() > 0 then
-			flags = flags + WORD_COOLDOWN
-			info.cooldown = G_WORD_COOLDOWN[lowered]
+			if not noCooldown then
+				flags = flags + WORD_COOLDOWN
+				info.cooldown = G_WORD_COOLDOWN[lowered]
+			else
+				score = score + string.len(lowered)
+			end
 		else
 			score = score + string.len(lowered)
 
@@ -437,9 +452,9 @@ function GM:ScoreWord( word, applyCooldown )
 
 end
 
-function GM:ScorePhrase( text, applyCooldown )
+function GM:ScorePhrase( text, applyCooldown, noCooldown )
 
-	local scoring = { phrase = text, words = {} }
+	local scoring = { phrase = text, words = {}, total = 0 }
 	local words = {}
 
 	--print("---PHRASE: " .. tostring(text))
@@ -472,7 +487,7 @@ function GM:ScorePhrase( text, applyCooldown )
 			}
 		else
 			dup[v.str] = k
-			scoring.words[#scoring.words+1] = self:ScoreWord( v, applyCooldown )			
+			scoring.words[#scoring.words+1] = self:ScoreWord( v, applyCooldown, noCooldown )			
 		end
 	end
 
@@ -487,15 +502,16 @@ function GM:ScorePhrase( text, applyCooldown )
 		if v.dupgroup then
 			v.score = math.max(math.Round(v.score / grouping[v.dupgroup]), 1)
 		end
+		scoring.total = scoring.total + v.score
 	end
 
 	return scoring
 
 end
 
-function GM:ServerSendPhrase( ply, text )
+function GM:ServerSendPhrase( ply, text, noCooldown )
 
-	local phrase = self:ScorePhrase( text, true )
+	local phrase = self:ScorePhrase( text, true, noCooldown )
 
 	if ply:IsBot() then
 

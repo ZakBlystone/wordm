@@ -82,6 +82,15 @@ function meta:GotoIdle()
 
 end
 
+function meta:ClearPhrases()
+
+	self.Phrases = {}
+	self.CurrentPhrase = nil
+
+	self:OnPhrasesCleared()
+
+end
+
 function meta:GetPhrases()
 
 	return self.Phrases or {}
@@ -183,6 +192,15 @@ function meta:OnPhraseAdded(phrase)
 	local weapon = self:GetActiveWeapon()
 	if IsValid(weapon) and weapon.OnPhraseAdded then
 		weapon:OnPhraseAdded(phrase)
+	end
+
+end
+
+function meta:OnPhrasesCleared()
+
+	local weapon = self:GetActiveWeapon()
+	if IsValid(weapon) and weapon.OnPhrasesCleared then
+		weapon:OnPhrasesCleared(phrase)
 	end
 
 end

@@ -130,6 +130,12 @@ function GM:Think()
 			v.pendingPhrase = nil
 			v.pendingPhraseTime = nil
 		end
+
+		if not v:Alive() or not v:IsPlaying() then
+
+			v:ClearPhrases()
+
+		end
 	end
 
 	self:ChatThink()
