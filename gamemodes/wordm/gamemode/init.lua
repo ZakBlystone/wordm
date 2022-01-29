@@ -17,6 +17,7 @@ resource.AddFile("sound/wordm/word_eval.wav")
 resource.AddFile("sound/wordm/word_place.wav")
 resource.AddFile("sound/wordm/word_place2.wav")
 resource.AddFile("sound/wordm/word_snap.wav")
+resource.AddFile("sound/wordm/word_pickup.wav")
 
 util.AddNetworkString("wordscore_msg")
 util.AddNetworkString("wordfire_msg")
