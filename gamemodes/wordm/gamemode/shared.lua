@@ -98,9 +98,8 @@ function GM:HandlePlayerPhraseSynced( ply, phrase )
 
 	if #phrase.words == 0 then return end
 
-	local weap = ply:GetActiveWeapon()
-	if weap.GivePhrase then
-		weap:GivePhrase( phrase )
+	if ply.GivePhrase then
+		ply:GivePhrase( phrase )
 	end
 
 end

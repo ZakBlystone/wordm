@@ -37,11 +37,9 @@ SWEP.ConsumeEntirePhrase	= true
 function SWEP:Initialize()
 
 	self:SetWeaponHoldType( self.HoldType )
-	self.Phrases = {}
 	self.WordEject = {}
 	self.NextBulletDamage = 0
 	self.NextBulletCount = 1
-	self.CurrentPhrase = nil
 
 end
 
@@ -147,80 +145,19 @@ end
 
 function SWEP:ConsumeWord()
 
-	local phrase = self.CurrentPhrase
-	if phrase == nil then return end
-
-	local word = phrase.words[1]
-	if word == nil then 
-		table.remove(self.Phrases, 1)
-		self.CurrentPhrase = self.Phrases[1]
-		return 
-	end
-
-	-- Skip this word if it is on cooldown
-	if bit.band(word.flags, WORD_COOLDOWN) ~= 0 then
-		local c = phrase.words[1]
-		table.remove(phrase.words, 1)
-		self:OnWordConsumed(phrase, c)
-		return self:ConsumeWord()
-	end
-
-	local c = phrase.words[1]
-	table.remove(phrase.words, 1)
-	self:OnWordConsumed(phrase, c)
-	return word, phrase
+	local owner = self:GetOwner()
+	if IsValid(owner) then return owner:ConsumeWord() end
 
 end
 
 function SWEP:ConsumePhrase()
 
-	local phrase = self.CurrentPhrase
-	if phrase == nil then return 0,0 end
-
-	local totalScore = 0
-	local totalCount = 0
-	local strings = {}
-	while #phrase.words > 0 do
-		local word = phrase.words[1]
-		table.remove(phrase.words,1)
-		self:OnWordConsumed(phrase, word)
-
-		if bit.band(word.flags, WORD_COOLDOWN) == 0 and
-		   bit.band(word.flags, WORD_VALID) ~= 0 then
-		   	totalScore = totalScore + (word.score or 0)
-		   	totalCount = totalCount + 1
-
-		   	strings[#strings+1] = phrase.phrase:sub(word.first, word.last)
-		end
-	end
-
-	--table.remove(self.Phrases, 1)
-	--self.CurrentPhrase = self.Phrases[1]
-
-	return totalScore, totalCount, strings
-
-end
-
-function SWEP:GivePhrase( scoring )
-
-	scoring = table.Copy(scoring)
-
-	self.Phrases[#self.Phrases+1] = scoring
-
-	if not self.CurrentPhrase then
-		self.CurrentPhrase = scoring
-	end
-
-	self:OnPhraseAdded(scoring)
+	local owner = self:GetOwner()
+	if IsValid(owner) then return owner:ConsumePhrase() end
 
 end
 
 function SWEP:OnWordConsumed(phrase, word)
-
-	if #phrase.words == 0 then
-		table.remove(self.Phrases, 1)
-		self.CurrentPhrase = self.Phrases[1]
-	end
 
 	if CLIENT then 
 		self:EjectWord(phrase, word)
@@ -343,8 +280,9 @@ function SWEP:ComputeHUDLayout()
 	end
 
 	local y = ScrH() - 200
-	for i=1, #self.Phrases do
-		AppendPhrase(self.Phrases[i], y)
+	local phrases = self:GetOwner():GetPhrases()
+	for i=1, #phrases do
+		AppendPhrase(phrases[i], y)
 		y = y - 30
 	end
 
@@ -427,7 +365,7 @@ function SWEP:PostDrawViewModel( vm, weapon, ply )
 		print( i, self:GetOwner():GetViewModel():GetBoneName(i))
 	end]]
 
-	local phrase = self.CurrentPhrase
+	local phrase = self:GetOwner():GetCurrentPhrase()
 	if phrase == nil then return end
 
 	local word = phrase.words[1]

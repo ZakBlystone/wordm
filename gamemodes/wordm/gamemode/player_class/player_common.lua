@@ -52,10 +52,10 @@ end
 --
 function PLAYER:Init()
 
-	if SERVER then
+	local ply = self.Player
+	local class = self
 
-		local ply = self.Player
-		local class = self
+	if SERVER then
 
 		ply:RemoveAllItems()
 
@@ -81,6 +81,9 @@ function PLAYER:Init()
 		ply:SetArmor( class.StartArmor )
 
 	end
+
+	ply.Phrases = {}
+	ply.CurrentPhrase = nil
 
 end
 
