@@ -299,6 +299,7 @@ function wmeta:Draw()
 
 	if cl_hideWordBullets:GetBool() then return end
 
+	local cr, cg, cb = GAMEMODE:GetWordColor( self.score, self.flags )
 	local eye = EyePos()
 
 	if IsValid(self.attach) then
@@ -360,12 +361,12 @@ function wmeta:Draw()
 
 	if not self.hit then
 		render.SetColorMaterial()
-		render.DrawBox( self.pos, self.angle, Vector(-self.tw * scale,-2,-2), Vector(2,2,2), Color(255,180,255))
+		render.DrawBox( self.pos, self.angle, Vector(-self.tw * scale,-2,-2), Vector(2,2,2), Color(cr,cg,cb))
 	end
 
 	cam.Start3D2D( _final, _rotated, rev and -scale or scale )
 	surface.SetTextPos(-self.tw, -self.th*.5)
-	surface.SetTextColor(255,255,255,255)
+	surface.SetTextColor(cr,cg,cb,255)
 	surface.DrawText( tostring(self.str) )
 	cam.End3D2D()
 
@@ -375,7 +376,7 @@ for _,v in ipairs(G_WORDS_FIRED) do
 	setmetatable(v, wmeta)
 end
 
-function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
+function GM:FireWord(owner, pos, dir, spread, damage, score, flags, str, idx)
 
 	spread = spread or 0
 	local speed = 80000
@@ -397,7 +398,11 @@ function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 		str = str,
 		speed = speed,
 		angle = dir:Angle(),
+		score = score,
+		flags = flags,
 	}, wmeta)
+
+	print(score, flags)
 
 	if SERVER then
 		net.Start("wordfire_msg")
@@ -405,6 +410,8 @@ function GM:FireWord(owner, pos, dir, spread, damage, str, idx)
 		net.WriteVector( pos )
 		net.WriteVector( pos + dir * 1000 )
 		net.WriteFloat( damage )
+		net.WriteUInt( score, 12 )
+		net.WriteUInt( flags, WORD_BITS )
 		net.WriteString( str )
 		net.SendOmit( owner )
 	end
@@ -418,12 +425,14 @@ if CLIENT then
 		local pos = net.ReadVector()
 		local dir = net.ReadVector()
 		local damage = net.ReadFloat()
+		local score = net.ReadUInt(12)
+		local flags = net.ReadUInt(WORD_BITS)
 		local str = net.ReadString()
 
 		dir:Sub(pos)
 		dir:Normalize()
 
-		GAMEMODE:FireWord( owner, pos, dir, 0, damage, str )
+		GAMEMODE:FireWord( owner, pos, dir, 0, damage, score, flags, str )
 	end)
 
 end

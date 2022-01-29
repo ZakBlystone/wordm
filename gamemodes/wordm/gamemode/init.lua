@@ -50,6 +50,16 @@ if G_WORDLIST == nil then
 
 end
 
+function GM:RandomWordWithCount(n)
+
+	local wordsWithN = {}
+	for _,v in ipairs(G_WORDLIST) do
+		if #v == n then wordsWithN[#wordsWithN+1] = v end
+	end
+	return wordsWithN[math.random(1,#wordsWithN)]
+
+end
+
 function GM:DoCleanup()
 
 	if self.QueuedCleanup then return end
@@ -316,7 +326,7 @@ function GM:GiveWords( ply, count )
 	local str = ""
 	for i=1, count do
 
-		local word = G_WORDLIST[math.random(1, #G_WORDLIST)]
+		local word = self:RandomWordWithCount(i+10) --G_WORDLIST[math.random(1, #G_WORDLIST)]
 
 		str = str .. word
 		if i ~= count then str = str .. " " end
@@ -375,24 +385,45 @@ concommand.Add("addWords", function(p,c,a)
 
 end)
 
+function GM:IsValidWord( word )
+
+	if G_WORDLIST_HASH[word] then return true end
+
+	for _,v in ipairs(player.GetAll()) do
+		local name = SanitizeToAscii(v:Nick()):lower()
+		if word == name then return true end
+
+		local b,pw = 0
+		for _ = 1, 100 do
+			_,b,pw = name:find( "([%w-']+)", b+1 )
+			if not pw then break end
+			if word == pw then return true end
+		end
+	end
+
+	return false
+
+end
+
 function GM:ScoreWord( word, applyCooldown )
 
 	local info = {}
 	local flags = 0
 	local score = 0
+	local lowered = string.lower(word.str)
 
-	if G_WORDLIST_HASH[string.lower(word.str)] then
+	if self:IsValidWord(lowered) then
 		flags = flags + WORD_VALID
 
-		if (G_WORD_COOLDOWN[word.str] or 0) - CurTime() > 0 then
+		if (G_WORD_COOLDOWN[lowered] or 0) - CurTime() > 0 then
 			flags = flags + WORD_COOLDOWN
-			info.cooldown = G_WORD_COOLDOWN[word.str]
+			info.cooldown = G_WORD_COOLDOWN[lowered]
 		else
-			score = score + string.len(word.str)
+			score = score + string.len(lowered)
 
 			if applyCooldown then
-				local computed = self:ComputeWordCooldown(word.str)
-				G_WORD_COOLDOWN[word.str] = CurTime() + computed
+				local computed = self:ComputeWordCooldown(lowered)
+				G_WORD_COOLDOWN[lowered] = CurTime() + computed
 				info.cooldown = computed
 			end
 		end
@@ -413,9 +444,8 @@ function GM:ScorePhrase( text, applyCooldown )
 
 	--print("---PHRASE: " .. tostring(text))
 
-	local max = 1000
 	local a,b,c = 0,0
-	while true do
+	for _ = 1, 100 do
 		a,b,c = text:find( "([%w-']+)", b+1 )
 		if not a then break end
 		--print("---WORD: " .. tostring(c))
@@ -424,8 +454,6 @@ function GM:ScorePhrase( text, applyCooldown )
 			last = b,
 			str = c,
 		}
-		max = max - 1
-		if max == 0 then break end
 	end
 
 	local dup = {}

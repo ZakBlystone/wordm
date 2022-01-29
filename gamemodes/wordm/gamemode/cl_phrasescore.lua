@@ -141,7 +141,7 @@ function meta:Draw( x, y, small, mulAlpha )
 	for k, w in ipairs(sc.words) do
 
 		local eval = ttx > k
-		local cr,cg,cb = GAMEMODE:GetWordColor(w)
+		local cr,cg,cb = GAMEMODE:GetWordColor(w.score, w.flags)
 		
 		if not eval then
 			cr,cg,cb = 255,255,255

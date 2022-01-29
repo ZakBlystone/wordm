@@ -148,18 +148,26 @@ function GM:PostDrawOpaqueRenderables()
 
 end
 
-function GM:GetWordColor(word)
+function GM:GetWordColor(score, flags)
 
 	local r,g,b = 255,255,255
 
-	if bit.band(word.flags, WORD_VALID) == 0 then
-		r,g,b = 255,100,100
+	--if true then return math.random(0,255), math.random(0,255), math.random(0,255) end
+
+	local h = 60 + math.floor(score/5)*20
+	h = math.min(h, 340)
+	r,g,b = rgb( h, 0.8, 255 )
+
+	if bit.band(flags, WORD_VALID) == 0 then
+		r,g,b = 0,0,0
 	else
-		if bit.band(word.flags, WORD_COOLDOWN) ~= 0 then
-			r,g,b = 60,60,128
+		if bit.band(flags, WORD_COOLDOWN) ~= 0 then
+			r,g,b = 255,255,255
 		end
-		if bit.band(word.flags, WORD_DUPLICATE) ~= 0 then
-			b = 0
+		if bit.band(flags, WORD_DUPLICATE) ~= 0 then
+			r = r / 2
+			g = g / 2
+			b = b / 2
 		end
 	end
 	return r,g,b
@@ -665,9 +673,11 @@ end
 
 function GM:PostWordCooldown( ply, str, cooldown )
 
+	if str == nil then return end
+
 	for _,v in ipairs(G_WORD_COOLDOWNS) do
 
-		if v.str == str then
+		if v.str:lower() == str:lower() then
 			v.time = cooldown
 			return
 		end
