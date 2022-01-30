@@ -160,3 +160,21 @@ function GM:FurthestEntFromPlayers( ents, players )
 	return bestEntity
 
 end
+
+function GM:Move(ply, mv)
+
+	-- Freeze the players
+	if self:GetGameEntity():GetGameState() == GAMESTATE_COUNTDOWN then
+
+		local ang = mv:GetMoveAngles()
+		local pos = mv:GetOrigin()
+		local vel = mv:GetVelocity()
+		
+		mv:SetVelocity( Vector(0,0,0) )
+		mv:SetOrigin( pos )
+
+		return true
+
+	end
+
+end

@@ -277,20 +277,6 @@ function ENT:Think()
 
 		end
 
-		for _,v in ipairs( GAMEMODE:GetAllPlayers( PLAYER_PLAYING ) ) do
-
-			if shouldFreezePlayers and not v:IsFlagSet(FL_FROZEN) then
-
-				v:AddFlags(FL_FROZEN)
-
-			elseif not shouldFreezePlayers and v:IsFlagSet(FL_FROZEN) then
-
-				v:RemoveFlags(FL_FROZEN)
-
-			end
-
-		end
-
 	else
 
 		if self:GetGameState() == GAMESTATE_IDLE then

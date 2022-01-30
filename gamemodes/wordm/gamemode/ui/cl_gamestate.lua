@@ -46,7 +46,7 @@ function GM:DrawGameState()
 		if LocalPlayer():IsPlaying() then
 
 			title = "GET READY"
-			subtitle = "You are invulnerable for a bit, type some sentences in chat quick!"
+			subtitle = "Everyone is frozen, type some sentences in chat quick!"
 
 		else
 

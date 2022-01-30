@@ -252,6 +252,7 @@ function GM:PlayerShouldTakeDamage( ply, attacker )
 	if self:GetGameEntity():GetGameState() < GAMESTATE_PLAYING then return false end
 
 	if ply:IsPlaying() then return true end
+	return false
 
 end
 
