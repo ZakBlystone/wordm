@@ -1,7 +1,7 @@
 
 -- quick and dumb map editor for making maps more playable in this game
 
-module("mapedit", package.seeall)
+module("wordm_mapedit", package.seeall)
 
 G_MAP_EDIT_STATE = G_MAP_EDIT_STATE or { 
 	active = false, 
@@ -218,7 +218,7 @@ function SelectLocal(pos, dir)
 		_invraymtx:SetTranslation(_zerovector)
 		local idir = _invraymtx * dir
 
-		local hit, t = IntersectRayBox(ipos, idir, v.mins, v.maxs)
+		local hit, t = math.IntersectRayBox(ipos, idir, v.mins, v.maxs)
 		if hit and t < c then
 			c, e = t, v
 		end

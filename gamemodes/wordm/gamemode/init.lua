@@ -1,16 +1,9 @@
 AddCSLuaFile "cl_init.lua"
-AddCSLuaFile "cl_textfx.lua"
-AddCSLuaFile "cl_chat.lua"
-AddCSLuaFile "cl_phrasescore.lua"
-AddCSLuaFile "cl_mapedit.lua"
-AddCSLuaFile "cl_playereditor.lua"
 AddCSLuaFile "player_extension.lua"
 AddCSLuaFile "mathutils.lua"
 AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
-AddCSLuaFile "sh_mapedit.lua"
 
-include "sv_mapedit.lua"
 include "shared.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
@@ -142,7 +135,7 @@ function GM:LoadMapData()
 	if mapdata then
 
 		local data = util.JSONToTable(mapdata)
-		PrintTable(data)
+		--PrintTable(data)
 
 		self.LoadedMapData = data
 		self:InitializeMapdata()

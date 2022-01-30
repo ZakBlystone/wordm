@@ -1,3 +1,5 @@
+module("math", package.seeall)
+
 local fmax = math.max
 local fmin = math.min
 function IntersectRayBox(origin, dir, min, max)
@@ -61,5 +63,22 @@ function IntersectRayPlane(origin, dir, plane_origin, plane_normal)
 		return math.huge
 
 	end
+
+end
+
+local _permut = {
+	function(a,b,c) return a,b,c end,
+	function(a,b,c) return b,a,c end,
+	function(a,b,c) return c,a,b end,
+	function(a,b,c) return c,b,a end,
+	function(a,b,c) return b,c,a end,
+	function(a,b,c) return a,c,b end,
+}
+
+function HSVToRGB(h,s,v)
+
+	h = h % 360 / 60
+	local x = v * s * math.abs(h % 2 - 1)
+	return _permut[1+math.floor(h)](v,v-x,v-v*s)
 
 end

@@ -1,4 +1,9 @@
-module("phrasescore", package.seeall)
+module("wordm_phrasescore", package.seeall)
+
+G_TEMP_PHRASESCORE = nil
+G_ALL_PHRASESCORES = G_ALL_PHRASESCORES or {}
+G_WORDSCORE_HISTORY_TIME = 30
+G_WORDSCORE_HISTORY_MAX = 5
 
 local meta = {}
 meta.__index = meta
@@ -224,4 +229,49 @@ if G_TEMP_PHRASESCORE then
 	G_TEMP_PHRASESCORE.eval = {}
 	G_TEMP_PHRASESCORE.finished = false
 	G_TEMP_PHRASESCORE.done = false
+end
+
+function GM:DrawPhrases()
+
+	if G_TEMP_PHRASESCORE then
+		G_TEMP_PHRASESCORE:Draw( ScrW()/2, ScrH()/2 - 100, false )
+	end
+
+	while #G_ALL_PHRASESCORES > 0 and (G_ALL_PHRASESCORES[1].time > G_WORDSCORE_HISTORY_TIME or #G_ALL_PHRASESCORES > G_WORDSCORE_HISTORY_MAX) do
+		table.remove(G_ALL_PHRASESCORES, 1)
+	end
+
+	local y = 0
+	for i=1, #G_ALL_PHRASESCORES do
+		local p = G_ALL_PHRASESCORES[i]
+		local tx = math.max(p.time - (G_WORDSCORE_HISTORY_TIME-1), 0)
+		local fade = math.max(math.min(p.time-1, 1), 0)
+		local fadex = 1 - fade * .5
+
+		local w,h = p:Draw(10, 10 + y, true, (1 - tx) * 0.8 * fadex)
+		y = y + (h or 0) + 5
+	end
+
+end
+
+function GM:ShowPhraseScore( ply, phrase )
+
+	if phrase == nil or #phrase.words == 0 then return end
+
+	if ply == LocalPlayer() then
+		surface.PlaySound("wordm/word_place.wav")
+		G_TEMP_PHRASESCORE = wordm_phrasescore.New( ply, phrase )
+		G_ALL_PHRASESCORES[#G_ALL_PHRASESCORES+1] = wordm_phrasescore.New( ply, phrase )
+	else
+		surface.PlaySound("wordm/word_place2.wav")
+		G_ALL_PHRASESCORES[#G_ALL_PHRASESCORES+1] = wordm_phrasescore.New( ply, phrase )
+	end
+
+end
+
+function GM:ClearPhraseScores()
+
+	G_ALL_PHRASESCORES = {}
+	G_TEMP_PHRASESCORE = nil
+
 end

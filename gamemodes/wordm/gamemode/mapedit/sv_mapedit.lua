@@ -1,4 +1,4 @@
-module("mapedit", package.seeall)
+module("wordm_mapedit", package.seeall)
 
 util.AddNetworkString("mapedit_msg")
 

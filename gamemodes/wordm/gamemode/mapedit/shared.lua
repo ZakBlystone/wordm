@@ -1,4 +1,17 @@
-module("mapedit", package.seeall)
+if SERVER then
+
+	AddCSLuaFile()
+	AddCSLuaFile "cl_mapedit.lua"
+
+	include "sv_mapedit.lua"
+
+else
+
+	include "cl_mapedit.lua"
+
+end
+
+module("wordm_mapedit", package.seeall)
 
 MAPEDIT_GETIDS = 0
 MAPEDIT_APPLY = 1
