@@ -1,22 +1,80 @@
 
 -- quick and dumb map editor for making maps more playable in this game
 
-G_MAP_EDIT_STATE = G_MAP_EDIT_STATE or { active = false, lockedEnts = {}, removes = {}, local_ents = {} }
+module("mapedit", package.seeall)
+
+G_MAP_EDIT_STATE = G_MAP_EDIT_STATE or { 
+	active = false, 
+	lockedEnts = {}, 
+	removes = {}, 
+	local_ents = {}, 
+	entity_lookup = {}, 
+	map_lookup = {} 
+}
 
 local state = G_MAP_EDIT_STATE
 
-function SelectEntity(e)
+local m = FindMetaTable("Entity")
+function m:MapCreationID()
 
-	if not IsValid(e) then print("INVALID ENT") return end
+	return state.map_lookup[ self:EntIndex() ]
+
+end
+
+function m:GetName()
+
+	local bspent = ents.GetBSPEntity( self:MapCreationID() )
+	if bspent then return bspent["targetname"] or "" end
+	return "<not found>"
+
+end
+
+function ents.GetMapCreatedEntity(id)
+
+	for _,v in ipairs(ents.GetAll()) do
+		if v:MapCreationID() == id then return v end
+	end
+
+end
+
+function ents.GetBSPEntity(id)
+
+	return state.mapbspents[ id-1234 ]
+
+end
+
+function SelectEntity(ent)
+
+	if not IsValid(ent) then print("INVALID ENT") return end
+
+	local mins,maxs = ent:WorldSpaceAABB()
+	state.selectedEntity = {
+		pos = function(s) return s.ent:GetPos() end,
+		angles = function(s) return s.ent:GetAngles() end,
+		ent = ent,
+		name = ent:GetName(),
+		id = ent:MapCreationID(),
+		mins = mins - ent:GetPos(),
+		maxs = maxs - ent:GetPos(),
+	}
+
+end
+
+function Deselect()
+
+	state.selectedEntity = nil
+
+end
+
+function RequestMapIDs()
 
 	net.Start("mapedit_msg")
-	net.WriteUInt(MAPEDIT_SELECT, MAPEDIT_BITS)
-	net.WriteEntity(e)
+	net.WriteUInt(MAPEDIT_GETIDS, MAPEDIT_BITS)
 	net.SendToServer()
 
 end
 
-function GM:DrawMapEditUI()
+function DrawEditUI()
 
 	if not state.active then return end
 
@@ -25,7 +83,7 @@ function GM:DrawMapEditUI()
 	if state.selectedEntity then
 
 		local e = state.selectedEntity
-		draw.SimpleText(tostring(e.type or e.ent) .. " : " .. tostring(e.name) .. " : " .. tostring(e.id), 
+		draw.SimpleText(tostring(e.type or e.ent) .. " : " .. tostring(e.name) .. " : " .. tostring(e.id or e._index), 
 			"DermaDefault", ScrW() - 120, ScrH() / 2, Color( 255, 10, 10, 255 ), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
 
 	end
@@ -48,7 +106,7 @@ local function DrawEntBox(e, col)
 
 end
 
-function GM:DrawMapEdit()
+function DrawEditWorld()
 
 	if not state.active then return end
 
@@ -75,14 +133,68 @@ function GM:DrawMapEdit()
 
 end
 
-function GM:ThinkMapEdit()
+function Think()
 
 end
 
 local _invraymtx = Matrix()
 local _zerovector = Vector(0,0,0)
 
-function GM:MapEdit_SelectLocal(pos, dir)
+local function lines(str)
+	local setinel = 0
+	return function()
+		local k, b = str:find("\n", setinel+1)
+		if not k then return end
+		b, setinel = setinel, k
+		return str:sub(b+1, k-1)
+	end
+end
+
+function LoadBSPEntities()
+
+	local f = file.Open( "maps/" .. game.GetMap() .. ".bsp", "rb", path or "GAME" )
+	local lumps = {}
+	local ident = f:ReadLong()
+	local version = f:ReadLong()
+	local off, len = f:ReadLong(), f:ReadLong()
+	f:Seek( off )
+
+	local entity_string = f:Read( len )
+	local entities = {}
+	local currentEnt = {}
+	for x in lines(entity_string) do
+		if x == "{" then continue end
+		if x == "}" then
+			currentEnt.index = #entities+1
+			entities[#entities+1] = currentEnt
+			currentEnt = {}
+			continue
+		end
+		local key, value = x:match("\"([%w_]+)\" \"([%g%s_]+)\"")
+		if key == "origin" then
+			local x,y,z = tostring(value):match( "([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+)" )
+			value = Vector(x or 0,y or 0,z or 0)
+		end
+		if key == "angles" then
+			local x,y,z = tostring(value):match( "([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+)" )
+			value = Angle(x or 0,y or 0,z or 0)
+		end
+		currentEnt[key] = value
+	end
+	state.bspents = entities
+	state.mapbspents = {}
+
+	for _,v in ipairs(state.bspents) do
+		state.mapbspents[v.index] = v
+	end
+
+	print("Loaded BSP entities")
+
+end
+
+--LoadBSPEntities()
+
+function SelectLocal(pos, dir)
 
 	print(type(pos))
 	print(type(dir))
@@ -110,9 +222,9 @@ function GM:MapEdit_SelectLocal(pos, dir)
 
 end
 
-function GM:MapEdit_Select()
+function Select()
 
-	local found = self:MapEdit_SelectLocal(
+	local found = SelectLocal(
 		LocalPlayer():GetShootPos(), 
 		LocalPlayer():GetAimVector())
 
@@ -132,7 +244,7 @@ function GM:MapEdit_Select()
 
 end
 
-function GM:MapEdit_ToggleLocked()
+function ToggleLocked()
 
 	if state.selectedEntity == nil then return end
 	local e = state.selectedEntity
@@ -145,7 +257,7 @@ function GM:MapEdit_ToggleLocked()
 
 end
 
-function GM:MapEdit_Remove()
+function Remove()
 
 	local e = state.selectedEntity
 	if e ~= nil then
@@ -170,7 +282,7 @@ function GM:MapEdit_Remove()
 
 end
 
-function GM:MapEdit_MakeLocalEnt(type, dotrace)
+function MakeLocalEnt(type, dotrace)
 
 	local t = {
 		pos = function(s) return s._pos end,
@@ -197,7 +309,14 @@ function GM:MapEdit_MakeLocalEnt(type, dotrace)
 			end
 		end
 
+		if type == "remove_marker" then
+			t.color = Color(255,100,100,100)
+			t.mins = Vector(-16,-16,-16)
+			t.maxs = Vector(16,16,16)
+		end
+
 		state.local_ents[#state.local_ents+1] = t
+		return t
 
 	else
 
@@ -207,6 +326,7 @@ function GM:MapEdit_MakeLocalEnt(type, dotrace)
 			t._pos = tr.HitPos
 			t._angle = tr.HitNormal:Angle()
 			state.local_ents[#state.local_ents+1] = t
+			return t
 
 		end
 
@@ -214,19 +334,19 @@ function GM:MapEdit_MakeLocalEnt(type, dotrace)
 
 end
 
-function GM:MapEditBindPress( bind, pressed, code )
+function BindPress( bind, pressed, code )
 
 	if state.active then
 		if bind == "+attack" then
-			if pressed then self:MapEdit_Select() end
+			if pressed then Select() end
 			return true
 		end
 		if bind == "+attack2" then
-			if pressed then self:MapEdit_ToggleLocked() end
+			if pressed then ToggleLocked() end
 			return true
 		end
 		if bind == "+reload" then
-			if pressed then self:MapEdit_Remove() end
+			if pressed then Remove() end
 			return true
 		end
 		if bind == "+menu" then
@@ -235,9 +355,9 @@ function GM:MapEditBindPress( bind, pressed, code )
 				Derma_Query(
 					"Create Entity", 
 					"Editor", 
-					"spawnpoint", function() self:MapEdit_MakeLocalEnt("wordm_spawn") end, 
-					"lobby_spawnpoint", function() self:MapEdit_MakeLocalEnt("wordm_spawn_lobby") end, 
-					"screen", function() self:MapEdit_MakeLocalEnt("wordm_screen", true) end)
+					"spawnpoint", function() MakeLocalEnt("wordm_spawn") end, 
+					"lobby_spawnpoint", function() MakeLocalEnt("wordm_spawn_lobby") end, 
+					"screen", function() MakeLocalEnt("wordm_screen", true) end)
 
 				return true
 
@@ -247,24 +367,91 @@ function GM:MapEditBindPress( bind, pressed, code )
 
 end
 
+function Clear()
+
+	state.local_ents = {}
+	state.lockedEnts = {}
+	state.removes = {}
+
+end
+
+function Load()
+
+	if not state.active then return end
+
+	local mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
+	if mapdata then
+
+		local data = util.JSONToTable(mapdata)
+
+		Clear()
+
+		for _,v in ipairs(data.spawn) do
+
+			local e = MakeLocalEnt(v.class)
+			e._pos = v.pos
+			e._angle = v.angles
+
+		end
+
+		for _,v in ipairs(data.locked) do
+
+			local e = ents.GetMapCreatedEntity(tonumber(v))
+			if IsValid(e) then
+				SelectEntity(e)
+				ToggleLocked()
+			else
+				print("Unable to find locked entity: " .. v)
+			end
+
+		end
+
+		for _,v in ipairs(data.removed) do
+
+			local bsp = ents.GetBSPEntity(tonumber(v))
+			if not bsp then continue end
+
+			local e = MakeLocalEnt("remove_marker")
+			e._pos = bsp["origin"] or Vector(0,0,0)
+			e._angle = bsp["angles"] or Angle(0,0,0)
+			e._index = v
+			e.name = bsp["targetname"] or ""
+
+		end
+
+		Deselect()
+
+	end
+
+end
+
 net.Receive("mapedit_msg", function()
 
 	local cmd = net.ReadUInt(MAPEDIT_BITS)
-	if cmd == MAPEDIT_SELECT then
+	if cmd == MAPEDIT_GETIDS then
 
-		print("RECV SELECT RESULT")
+		local numEnts = net.ReadUInt(24)
+		local numMapIDs = net.ReadUInt(24)
+		local numEntIDs = net.ReadUInt(24)
 
-		local ent = net.ReadEntity()
-		local mins,maxs = ent:WorldSpaceAABB()
-		state.selectedEntity = {
-			pos = function(s) return s.ent:GetPos() end,
-			angles = function(s) return s.ent:GetAngles() end,
-			ent = ent,
-			name = net.ReadString(),
-			id = net.ReadInt(32),
-			mins = mins - ent:GetPos(),
-			maxs = maxs - ent:GetPos(),
-		}
+		local mapIDs = {}
+		local entIDs = {}
+
+		for i=1, numMapIDs do mapIDs[#mapIDs+1] = net.ReadUInt(32) end
+		for i=1, numEntIDs do entIDs[#entIDs+1] = net.ReadUInt(32) end
+
+		mapIDs = DecodeIDList(mapIDs)
+		entIDs = DecodeIDList(entIDs)
+
+		assert(#mapIDs == #entIDs and #mapIDs == numEnts)
+
+		state.entity_lookup = {}
+		state.map_lookup = {}
+
+		for i=1, numEnts do
+			state.entity_lookup[mapIDs[i]] = entIDs[i]
+			state.map_lookup[entIDs[i]] = mapIDs[i]
+		end
 
 	end
 
@@ -274,9 +461,26 @@ concommand.Add("wordm_mapedit", function()
 
 	state.active = not state.active
 
+	if state.active then
+		RequestMapIDs()
+		LoadBSPEntities()
+	end
+
 end)
 
-concommand.Add("wordm_write", function()
+concommand.Add("wordm_mapload", function()
+
+	Load()
+
+end)
+
+concommand.Add("wordm_mapclear", function()
+
+	Clear()
+
+end)
+
+concommand.Add("wordm_mapwrite", function()
 
 	file.CreateDir("wordm/maps")
 
@@ -296,11 +500,15 @@ concommand.Add("wordm_write", function()
 	out.spawn = {}
 
 	for _,v in pairs(state.local_ents) do
-		out.spawn[#out.spawn+1] = {
-			pos = v:pos(),
-			angles = v:angles(),
-			class = v.type,
-		}
+		if v.type == "remove_marker" then
+			out.removed[#out.removed+1] = v._index
+		else
+			out.spawn[#out.spawn+1] = {
+				pos = v:pos(),
+				angles = v:angles(),
+				class = v.type,
+			}
+		end
 	end
 
 	local str = util.TableToJSON( out )

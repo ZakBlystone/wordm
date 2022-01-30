@@ -143,7 +143,7 @@ function ENT:Think()
 		if state == GAMESTATE_IDLE then
 
 			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
-			if #readyPlayers > 0 then
+			if #readyPlayers > 1 then
 
 				local nonBot = false
 				for _,v in ipairs(readyPlayers) do

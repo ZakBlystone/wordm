@@ -8,9 +8,10 @@ AddCSLuaFile "player_extension.lua"
 AddCSLuaFile "mathutils.lua"
 AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
+AddCSLuaFile "sh_mapedit.lua"
 
-include "shared.lua"
 include "sv_mapedit.lua"
+include "shared.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
 resource.AddFile("sound/wordm/word_eval.wav")
@@ -65,6 +66,8 @@ function GM:DoCleanup()
 
 	if self.QueuedCleanup then return end
 	self.QueuedCleanup = true
+
+	G_WORD_COOLDOWN = {}
 
 	local filter = {
 		"env_fire", 
@@ -233,7 +236,7 @@ end
 
 function GM:PlayerShouldTakeDamage( ply, attacker )
 
-	if self:GetGameEntity():GetGameState() ~= GAMESTATE_PLAYING then return false end
+	if self:GetGameEntity():GetGameState() < GAMESTATE_PLAYING then return false end
 
 	if ply:IsPlaying() then return true end
 
@@ -280,7 +283,7 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 	ply.deathTime = CurTime()
 	ply.becameSpectator = false
 
-	if ply:IsPlaying() then
+	if ply:IsPlaying() and #ply:GetPhrases() > 0 then
 
 		local drop = ents.Create("wordm_drop_notepad")
 		drop:SetPos( ply:GetPos() + Vector(0,0,30) )

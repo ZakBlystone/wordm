@@ -4,6 +4,7 @@ include "player_extension.lua"
 include "mathutils.lua"
 include "wordbullets.lua"
 include "player_class/player_common.lua"
+include "sh_mapedit.lua"
 
 GM.Name     = "WorDM"
 GM.Author   = "Zak"
@@ -22,9 +23,6 @@ WORD_SECRET = 4
 WORD_DUPLICATE = 8
 
 TIME_TO_PHRASE = 0.5
-
-MAPEDIT_SELECT = 0
-MAPEDIT_BITS = 1
 
 function SanitizeToAscii(str)
 

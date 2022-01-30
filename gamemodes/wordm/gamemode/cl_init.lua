@@ -140,7 +140,7 @@ function GM:Think()
 
 	self:ChatThink()
 	self:CooldownThink()
-	self:ThinkMapEdit()
+	mapedit.Think()
 	--self:UpdateFiredWords()
 
 end
@@ -149,7 +149,7 @@ function GM:PostDrawOpaqueRenderables()
 
 	surface.SetFont( "WordAmmoFont" )
 	self:DrawFiredWords()
-	self:DrawMapEdit()
+	mapedit.DrawEditWorld()
 
 
 end
@@ -316,7 +316,8 @@ function GM:HUDPaint()
 	local gamestate = ge:GetGameState()
 
 	self:DrawGameState()
-	self:DrawMapEditUI()
+
+	mapedit.DrawEditUI()
 
 	if self:IsChatOpen() then
 		self:DrawChat()
@@ -327,6 +328,13 @@ function GM:HUDPaint()
 		self:DrawCooldowns()
 		self:DrawPhrases()
 		self:DrawPings()
+
+	else
+
+		local readyPlayers = self:GetAllPlayers(PLAYER_READY)
+		if #readyPlayers > 0 then
+			self:DrawReadyPlayers()
+		end
 
 	end
 
@@ -652,7 +660,7 @@ end
 
 function GM:PlayerBindPress( ply, bind, pressed, code )
 
-	if self:MapEditBindPress( bind, pressed, code ) then
+	if mapedit.BindPress( bind, pressed, code ) then
 		return true
 	end
 
