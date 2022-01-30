@@ -90,19 +90,24 @@ function DrawEditUI()
 
 	local lobbySpawns = 0
 	local spawns = 0
+	local screens = 0
 	for _,v in ipairs(state.local_ents) do
 		if v.type == "wordm_spawn" then spawns = spawns + 1 end
 		if v.type == "wordm_spawn_lobby" then lobbySpawns = lobbySpawns + 1 end
+		if v.type == "wordm_screen" then screens = screens + 1 end
 	end
 
 	draw.SimpleText("spawns: " .. spawns, "DermaDefault", 10, 400, Color(255,10,10,255) )
 	draw.SimpleText("lobby_spawns: " .. lobbySpawns, "DermaDefault", 10, 420, Color(255,10,10,255) )
+	draw.SimpleText("screens: " .. screens, "DermaDefault", 10, 440, Color(255,10,10,255) )
 
 end
 
 local function DrawEntBox(e, col)
 
 	render.DrawBox(e:pos(), e:angles(), e.mins, e.maxs, col or Color( 255, 255, 255, 100 ))
+
+	render.DrawLine(e:pos(), e:pos() + e:angles():Forward() * 30, Color(255,255,255,100))
 
 end
 
@@ -170,7 +175,8 @@ function LoadBSPEntities()
 			currentEnt = {}
 			continue
 		end
-		local key, value = x:match("\"([%w_]+)\" \"([%g%s_]+)\"")
+		local key, value = x:match("\"([%w%g%s_]+)\" \"([%g%s_]+)\"")
+		print(x)
 		if key == "origin" then
 			local x,y,z = tostring(value):match( "([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+)" )
 			value = Vector(x or 0,y or 0,z or 0)
@@ -196,8 +202,8 @@ end
 
 function SelectLocal(pos, dir)
 
-	print(type(pos))
-	print(type(dir))
+	--print(type(pos))
+	--print(type(dir))
 
 	local c, e = math.huge, nil
 	for _,v in ipairs(state.local_ents) do
@@ -294,26 +300,36 @@ function MakeLocalEnt(type, dotrace)
 		type = type,
 	}
 
+	if string.find(type, "spawn") then
+		t.mins = Vector(-16,-16,0)
+		t.maxs = Vector(16,16,72)
+		t.color = Color(80,255,80,100)
+		if string.find(type, "lobby") then
+			t.color = Color(80,180,255,100)
+		end
+	end
+
+	if type == "remove_marker" then
+		t.color = Color(255,100,100,100)
+		t.mins = Vector(-16,-16,-16)
+		t.maxs = Vector(16,16,16)
+	end
+
+	if type == "wordm_screen" then
+
+		t.color = Color(30,255,20,100)
+		t.mins = Vector(-48,-48,0)
+		t.maxs = Vector(48,48,4)
+
+	end
+
 	if not dotrace then
 
 		local yaw = LocalPlayer():EyeAngles().y
 		t._pos = LocalPlayer():GetPos()
 		t._angle.yaw = yaw
 
-		if string.find(type, "spawn") then
-			t.mins = Vector(-16,-16,0)
-			t.maxs = Vector(16,16,72)
-			t.color = Color(80,255,80,100)
-			if string.find(type, "lobby") then
-				t.color = Color(80,180,255,100)
-			end
-		end
 
-		if type == "remove_marker" then
-			t.color = Color(255,100,100,100)
-			t.mins = Vector(-16,-16,-16)
-			t.maxs = Vector(16,16,16)
-		end
 
 		state.local_ents[#state.local_ents+1] = t
 		return t
@@ -325,6 +341,8 @@ function MakeLocalEnt(type, dotrace)
 
 			t._pos = tr.HitPos
 			t._angle = tr.HitNormal:Angle()
+			t._angle:RotateAroundAxis(t._angle:Right(), -90)
+			t._angle:RotateAroundAxis(t._angle:Up(), 90)
 			state.local_ents[#state.local_ents+1] = t
 			return t
 
@@ -425,6 +443,44 @@ function Load()
 
 end
 
+function Save()
+
+	file.CreateDir("wordm/maps")
+
+	local locked = {}
+	for k,v in pairs(state.lockedEnts) do
+		locked[#locked+1] = tostring(v.id)
+	end
+
+	local removed = {}
+	for k,v in pairs(state.removes) do
+		removed[#removed+1] = tostring(v.id)
+	end
+
+	local out = {}
+	out.locked = locked
+	out.removed = removed
+	out.spawn = {}
+
+	for _,v in pairs(state.local_ents) do
+		if v.type == "remove_marker" then
+			out.removed[#out.removed+1] = v._index
+		else
+			out.spawn[#out.spawn+1] = {
+				pos = v:pos(),
+				angles = v:angles(),
+				class = v.type,
+			}
+		end
+	end
+
+	local str = util.TableToJSON( out )
+	print( str )
+
+	file.Write("wordm/maps/" .. game.GetMap() .. ".txt", str)
+
+end
+
 net.Receive("mapedit_msg", function()
 
 	local cmd = net.ReadUInt(MAPEDIT_BITS)
@@ -464,6 +520,7 @@ concommand.Add("wordm_mapedit", function()
 	if state.active then
 		RequestMapIDs()
 		LoadBSPEntities()
+		Load()
 	end
 
 end)
@@ -480,40 +537,22 @@ concommand.Add("wordm_mapclear", function()
 
 end)
 
+concommand.Add("wordm_mapapply", function()
+
+	Save()
+	Clear()
+	net.Start("mapedit_msg")
+	net.WriteUInt(MAPEDIT_APPLY, MAPEDIT_BITS)
+	net.SendToServer()
+
+	timer.Simple(.5,function()
+		Load()
+	end)
+
+end)
+
 concommand.Add("wordm_mapwrite", function()
 
-	file.CreateDir("wordm/maps")
-
-	local locked = {}
-	for k,v in pairs(state.lockedEnts) do
-		locked[#locked+1] = tostring(v.id)
-	end
-
-	local removed = {}
-	for k,v in pairs(state.removes) do
-		removed[#removed+1] = tostring(v.id)
-	end
-
-	local out = {}
-	out.locked = locked
-	out.removed = removed
-	out.spawn = {}
-
-	for _,v in pairs(state.local_ents) do
-		if v.type == "remove_marker" then
-			out.removed[#out.removed+1] = v._index
-		else
-			out.spawn[#out.spawn+1] = {
-				pos = v:pos(),
-				angles = v:angles(),
-				class = v.type,
-			}
-		end
-	end
-
-	local str = util.TableToJSON( out )
-	print( str )
-
-	file.Write("wordm/maps/" .. game.GetMap() .. ".txt", str)
+	Save()
 
 end)

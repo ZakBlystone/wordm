@@ -1,7 +1,8 @@
 module("mapedit", package.seeall)
 
 MAPEDIT_GETIDS = 0
-MAPEDIT_BITS = 1
+MAPEDIT_APPLY = 1
+MAPEDIT_BITS = 2
 
 -- simple compression for transmitting entity ids over the network
 

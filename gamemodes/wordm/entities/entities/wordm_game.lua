@@ -73,6 +73,8 @@ function ENT:GotoIdleState( returnedFromGame )
 			v:Spawn()
 		end
 
+		self:DeactivateWordScreens()
+
 	end
 
 end
@@ -133,6 +135,71 @@ function ENT:GotoPostGameState()
 
 end
 
+function ENT:DeactivateWordScreens()
+
+	for _,v in ipairs(ents.FindByClass("wordm_screen")) do
+
+		v:MakeInactive()
+
+	end
+
+end
+
+function ENT:WhatKindOfPowers()
+
+	local averagePlayerHealth = 0
+	local players = GAMEMODE:GetAllPlayers( PLAYER_PLAYING ) 
+
+	for i=1, #players do
+		averagePlayerHealth = averagePlayerHealth + players[i]:Health()
+	end
+
+	averagePlayerHealth = averagePlayerHealth / #players
+
+	if averagePlayerHealth < 75 then
+		return WORDSCREENTYPE_HEALTH
+	else
+		return WORDSCREENTYPE_WORDS
+	end
+
+end
+
+
+function ENT:ManageWordScreenActivation()
+
+	self.NextScreenActivation = self.NextScreenActivation or CurTime()
+	if self.NextScreenActivation > CurTime() then return end
+
+	local screens = ents.FindByClass("wordm_screen")
+	local inActiveScreens = {}
+	local numActive = 0
+
+	for _,v in ipairs(screens) do
+		if v:IsActive() then 
+			numActive = numActive + 1
+		else
+			inActiveScreens[#inActiveScreens+1] = v
+		end
+	end
+
+	if numActive > (#screens * 0.60) then
+		print("Waiting for more screens: " .. numActive .. " / " .. #screens)
+		self.NextScreenActivation = CurTime() + 10
+		return
+	end
+
+	local players = GAMEMODE:GetAllPlayers( PLAYER_PLAYING ) 
+	local furthest = GAMEMODE:FurthestEntFromPlayers( inActiveScreens, players )
+
+	if furthest then
+		furthest:MakeActive( false, self:WhatKindOfPowers() )
+		print("Activated Screen: " .. tostring(furthest) .. " " .. numActive .. " / " .. #screens)
+	end
+
+	self.NextScreenActivation = CurTime() + 10
+
+end
+
 function ENT:Think()
 
 	if SERVER then
@@ -180,6 +247,8 @@ function ENT:Think()
 			end
 
 		elseif state == GAMESTATE_PLAYING then
+
+			self:ManageWordScreenActivation()
 
 			local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
 			local alive = 0

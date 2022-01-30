@@ -135,3 +135,27 @@ function GM:GetAllPlayers( state )
 	return out
 
 end
+
+function GM:FurthestEntFromPlayers( ents, players )
+
+	local bestEntity = nil
+	local bestDist = 0
+	if debugClose then bestDist = math.huge end
+
+	for _,v in ipairs(ents) do
+
+		local minPlayerDist = math.huge
+		for _,pl in ipairs( players ) do
+			minPlayerDist = math.min( minPlayerDist, pl:GetPos():Distance(v:GetPos()) )
+		end
+
+		if minPlayerDist > bestDist then
+			bestEntity = v
+			bestDist = minPlayerDist
+		end
+
+	end
+
+	return bestEntity
+
+end

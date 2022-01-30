@@ -62,7 +62,7 @@ function GM:RandomWordWithCount(n)
 
 end
 
-function GM:DoCleanup()
+function GM:DoCleanup( reloadMapData )
 
 	if self.QueuedCleanup then return end
 	self.QueuedCleanup = true
@@ -79,9 +79,20 @@ function GM:DoCleanup()
 		"wordm_spawn_lobby",
 	}
 
+	if reloadMapData then
+		table.RemoveByValue(filter, "wordm_screen")
+		table.RemoveByValue(filter, "wordm_spawn")
+		table.RemoveByValue(filter, "wordm_spawn_lobby")
+	end
+
 	timer.Simple(0, function()
 		game.CleanUpMap( false, filter )
-		GAMEMODE:InitializeMapdata()
+		if reloadMapData then 
+			GAMEMODE:LoadMapData()
+		else
+			GAMEMODE:InitializeMapdata()
+		end
+
 		GAMEMODE.QueuedCleanup = false
 		for _, p in ipairs(ents.FindByClass("prop_physics*")) do
 			local phys = p:GetPhysicsObject()
@@ -122,7 +133,7 @@ function GM:InitializeMapdata()
 
 end
 
-function GM:InitPostEntity()
+function GM:LoadMapData()
 
 	local mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
 	if mapdata then
@@ -145,6 +156,12 @@ function GM:InitPostEntity()
 		end
 
 	end
+
+end
+
+function GM:InitPostEntity()
+
+	self:LoadMapData()
 
 	ents.Create("wordm_game"):Spawn()
 
@@ -336,12 +353,12 @@ function GM:ScalePlayerDamage( ply, hitgroup, dmginfo )
 
 end
 
-function GM:GiveWords( ply, count )
+function GM:GiveWords( ply, count, length )
 
 	local str = ""
 	for i=1, count do
 
-		local word = self:RandomWordWithCount(i+10) --G_WORDLIST[math.random(1, #G_WORDLIST)]
+		local word = self:RandomWordWithCount(length or 5) --G_WORDLIST[math.random(1, #G_WORDLIST)]
 
 		str = str .. word
 		if i ~= count then str = str .. " " end
@@ -456,6 +473,25 @@ function GM:ScoreWord( word, applyCooldown, noCooldown )
 
 end
 
+function GM:TriggerScreens( phrase, ply )
+
+	local b,pw = 0
+	for _ = 1, 100 do
+		_,b,pw = phrase:find( "([%w-']+)", b+1 )
+		if not pw then break end
+		local word = pw:upper()
+
+		for _, screen in ipairs( ents.FindByClass("wordm_screen") ) do
+
+			if screen:GetWord() == word then
+				screen:ApplyToPlayer( ply )
+			end
+
+		end
+	end
+
+end
+
 function GM:ScorePhrase( text, applyCooldown, noCooldown )
 
 	local scoring = { phrase = text, words = {}, total = 0 }
@@ -523,6 +559,8 @@ function GM:ServerSendPhrase( ply, text, noCooldown )
 
 	end
 
+	self:TriggerScreens( text, ply )
+
 	if tts then
 		tts.TTSOnPlayer(text, ply, 180)
 	end
@@ -539,6 +577,8 @@ function GM:ServerSendPhrase( ply, text, noCooldown )
 end
 
 function GM:PlayerSay( ply, text )
+
+	self:TriggerScreens( text, ply )
 
 	--local sanitized = SanitizeToAscii(text)
 	--print("SAY: " .. text)

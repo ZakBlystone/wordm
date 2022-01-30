@@ -26,8 +26,14 @@ net.Receive("mapedit_msg", function(len, pl)
 
 		for i=1, #mapIDs do net.WriteUInt(mapIDs[i], 32) end
 		for i=1, #entIDs do net.WriteUInt(entIDs[i], 32) end
-		
+
 		net.Send(pl)
+
+	elseif cmd == MAPEDIT_APPLY then
+
+		if pl:IsAdmin() then
+			GAMEMODE:DoCleanup( true )
+		end
 
 	end
 
