@@ -28,6 +28,7 @@ function meta:Draw( x, y, small, mulAlpha )
 	local alpha = 1 * (mulAlpha or 1)
 	local total = 0
 	local totalx = 10
+	local numwords = #sc.words
 
 	--small = true
 
@@ -85,7 +86,7 @@ function meta:Draw( x, y, small, mulAlpha )
 
 	surface.SetFont(totalFont)
 
-	local ttx = self.time * 2 * (#sc.words + 1)
+	local ttx = self.time * 2 * (numwords + 1)
 	for k, w in ipairs(sc.words) do
 		if ttx > k then total = total + w.score end
 	end
@@ -142,18 +143,19 @@ function meta:Draw( x, y, small, mulAlpha )
 		x = x + extraw
 	end
 
-	if #sc.words > 8 then fast = true end
+	if numwords > 8 then fast = true end
 	for k, w in ipairs(sc.words) do
 
 		local eval = ttx > k
 		local cr,cg,cb = GAMEMODE:GetWordColor(w.score, w.flags)
-		
+		local wy = y
+
 		if not eval then
 			cr,cg,cb = 255,255,255
 		else
 			if not self.eval[k] then
 				if not small then
-					if fast and k ~= #sc.words then
+					if fast and k ~= numwords then
 						LocalPlayer():EmitSound("wordm/word_eval2.wav", 75, 100 - (w.score or 25) * 2)
 						--surface.PlaySound("wordm/word_eval2.wav")
 					else
@@ -161,22 +163,26 @@ function meta:Draw( x, y, small, mulAlpha )
 						--surface.PlaySound("wordm/word_eval.wav")
 					end
 				end
-				if k == #sc.words then self.evaldone = true end
+				if k == numwords then self.evaldone = true end
 				self.eval[k] = true
 			end
 
 			total = total + w.score
+
+			local bounce = math.Bouncer((ttx-k)/(numwords + 1),nil,nil,0.4)
+			wy = wy - bounce * 20
+
 		end
 
 		surface.SetTextColor(cr,cg,cb,255*alpha)
 		surface.SetFont(mainFont)
 		local wstr = sc.phrase:sub(w.first, w.last)
 		local ww, wh = surface.GetTextSize(wstr)
-		surface.SetTextPos(x, y)
+		surface.SetTextPos(x, wy)
 		surface.DrawText( wstr )
 
 		if eval then
-			local b = small and y + 20 or y + 30
+			local b = small and wy + 20 or wy + 30
 			local d = small and 4 or 8
 			surface.SetDrawColor(cr,cg,cb,255*alpha)
 			surface.DrawLine(x-1, b, x-1, b + d)
@@ -200,7 +206,7 @@ function meta:Draw( x, y, small, mulAlpha )
 			local wstr = sc.phrase:sub(w.last+1, nf-1)
 			local ww, wh = surface.GetTextSize(wstr)
 			surface.SetTextColor(cr,cg,cb,80*alpha)
-			surface.SetTextPos(x, y)
+			surface.SetTextPos(x, wy)
 			surface.DrawText( wstr )
 			x = x + ww
 

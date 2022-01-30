@@ -82,3 +82,31 @@ function HSVToRGB(h,s,v)
 	return _permut[1+math.floor(h)](v,v-x,v-v*s)
 
 end
+
+local function fit(x)
+	return 1 - 0.5*x + 0.1665831*x^2 - 0.04136174*x^3 + 0.007783141*x^4 - 0.0008936082*x^5
+end
+
+function Bouncer( t, decay, fdecay, speed, upshot )
+
+	decay = decay or 0.9
+	speed = speed or 0.2
+	fdecay = fdecay or 0.35
+
+	local coef = 1/fit(fdecay)
+
+	if upshot then t = t + speed / 2 end
+	local root = speed / (speed - fdecay * t / coef)
+
+	if root < 0 then return 0, 0 end
+
+	local i = math.floor(math.log(root) * (1/fdecay))
+	local duration = speed / math.exp( i * fdecay )
+	local offset = coef * (speed - speed * math.exp( -i * fdecay )) / fdecay
+	local amplitude = 1 / math.exp(i * decay)
+
+	t = t * ( 1 / duration )
+	t = t - ( offset / duration )
+	return t * ( 1 - t ) * 4 * amplitude, i
+
+end

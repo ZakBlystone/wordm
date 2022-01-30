@@ -11,15 +11,43 @@ end
 
 local clickToJoinText = "Press '" .. input.LookupBinding("+reload"):upper() .. "' to join"
 
+local layoutCache = {}
+local function MakeLayout(text, key)
+	
+	layoutCache[key] = layoutCache[key] or {}
+	local t = layoutCache[key]
+
+	if text == nil then
+		return nil
+	elseif text ~= t.text then
+		t.text = text
+		local tiles = textfx.MakeTiles(text, "GameStateTitle")
+		t.layout = textfx.LayoutCentered(tiles, ScrW()/2, 100)
+		t.animate = table.Copy(t.layout)
+	end
+	return t.layout, t.animate
+
+end
+
+local animTime = 0
+local lastGameState = -1
 function GM:DrawGameState()
 
 	local ge = self:GetGameEntity()
 	if not IsValid(ge) then return end
 
+	animTime = animTime + FrameTime()
+
 	local title = nil
 	local subtitle = nil
 	local timer = nil
 	local gamestate = ge:GetGameState()
+
+	if gamestate ~= lastGameState then
+		lastGameState = gamestate
+		animTime = 0
+	end
+
 	if gamestate == GAMESTATE_IDLE then
 
 		title = "WAITING FOR PLAYERS"
@@ -93,13 +121,32 @@ function GM:DrawGameState()
 
 	end
 
+	local title, anim = MakeLayout(title, "title")
+
 	if title then
 
 		surface.SetMaterial(gradient_mat)
 		surface.SetDrawColor(0,0,0,200)
 		surface.DrawTexturedRect(0,0,ScrW(),400)
 
-		draw.SimpleText(title, "GameStateTitle", ScrW()/2,100, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		textfx.DrawLayout(anim)
+		--draw.SimpleText(title, "GameStateTitle", ScrW()/2,100, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+		local ft = FrameTime()
+		for k,v in ipairs(anim) do
+			local t = ((animTime - k*0.05) % 2)
+			local bounce = math.Bouncer(t,nil,nil,0.4)
+			local b = title[k]
+			local cr,cg,cb = math.HSVToRGB((CurTime() + k)*30,bounce*0.6,255)
+			v.dir = v.dir or 0
+			v.y = b.y - bounce * 50
+			v.cr = cr
+			v.cg = cg
+			v.cb = cb
+			v.r = v.r + v.dir * ft
+			--v.r = b.r - bounce * v.dir
+			--v.sy = b.sy + bounce * 0.1
+		end
 
 	end
 
