@@ -304,6 +304,7 @@ function wmeta:Draw()
 
 	if IsValid(self.attach) then
 		if self.attach == LocalPlayer() then return end
+		if self.attach:GetClass() == "wordm_screen" then return end
 
 		local mtx = self.attach:GetBoneMatrix( self.attachBone )
 		if mtx == nil then

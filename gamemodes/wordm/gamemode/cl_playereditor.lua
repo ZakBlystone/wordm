@@ -185,7 +185,7 @@ function GM:OpenPlayerEditor()
 			bgtab.Tab:SetVisible( true )
 		end
 
-		--[[local groups = string.Explode( " ", GetConVarString( "cl_playerbodygroups" ) )
+		local groups = string.Explode( " ", GetConVarString( "cl_playerbodygroups" ) )
 		for k = 0, mdl.Entity:GetNumBodyGroups() - 1 do
 			if ( mdl.Entity:GetBodygroupCount( k ) <= 1 ) then continue end
 
@@ -206,7 +206,7 @@ function GM:OpenPlayerEditor()
 			mdl.Entity:SetBodygroup( k, groups[ k + 1 ] or 0 )
 
 			bgtab.Tab:SetVisible( true )
-		end]]
+		end
 
 		sheet.tabScroller:InvalidateLayout()
 	end

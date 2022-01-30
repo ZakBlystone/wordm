@@ -175,8 +175,8 @@ function LoadBSPEntities()
 			currentEnt = {}
 			continue
 		end
-		local key, value = x:match("\"([%w%g%s_]+)\" \"([%g%s_]+)\"")
-		print(x)
+		local key, value = x:match("\"([%w%g%s_]+)\" \"([%g%s_]*)\"")
+		--print(x)
 		if key == "origin" then
 			local x,y,z = tostring(value):match( "([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+) ([%+%-]?%d*%.?%d+)" )
 			value = Vector(x or 0,y or 0,z or 0)

@@ -182,6 +182,11 @@ function ENT:ManageWordScreenActivation()
 		end
 	end
 
+	if #inActiveScreens == 0 then
+		self.NextScreenActivation = CurTime() + 10
+		return 
+	end
+
 	if numActive > (#screens * 0.60) then
 		print("Waiting for more screens: " .. numActive .. " / " .. #screens)
 		self.NextScreenActivation = CurTime() + 10

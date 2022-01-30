@@ -40,6 +40,9 @@ if G_WORDLIST == nil then
 
 		local wordstr = file.Read("gamemodes/wordm/content/data/" .. filename .. ".txt", "THIRDPARTY")
 		for s in string.gmatch(wordstr, "[^%s,]+") do
+			local last = s[#s]
+			if string.find(s,"[%.]+") then continue end
+			if last == "-" then continue end
 			G_WORDLIST[#G_WORDLIST+1] = s:lower()
 			G_WORDLIST_HASH[s:lower()] = true
 		end
@@ -365,6 +368,8 @@ function GM:GiveWords( ply, count, length )
 
 	end
 
+	print("GIVE: '" .. str .. "'")
+
 	self:ServerSendPhrase(ply, str)
 
 end
@@ -483,8 +488,10 @@ function GM:TriggerScreens( phrase, ply )
 
 		for _, screen in ipairs( ents.FindByClass("wordm_screen") ) do
 
-			if screen:GetWord() == word then
-				screen:ApplyToPlayer( ply )
+			if screen:GetWord1() == word then
+				screen:ApplyToPlayer( ply, 1 )
+			elseif screen:GetWord2() == word then
+				screen:ApplyToPlayer( ply, 2 )
 			end
 
 		end

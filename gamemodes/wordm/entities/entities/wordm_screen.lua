@@ -8,6 +8,9 @@ ENT.Model = "models/props_phx/construct/metal_plate2x2.mdl"
 WORDSCREENTYPE_INACTIVE = 0
 WORDSCREENTYPE_HEALTH = 1
 WORDSCREENTYPE_WORDS = 2
+WORDSCREENTYPE_MULTI = 3
+
+MAX_HEALTH_TO_GIVE = 125
 
 function ENT:Initialize()
 
@@ -15,6 +18,7 @@ function ENT:Initialize()
 
 		self:SetModel(self.Model)
 		self:SetMoveType(MOVETYPE_NONE)
+		self:SetSolid(SOLID_VPHYSICS)
 
 	end
 
@@ -23,7 +27,8 @@ end
 function ENT:SetupDataTables()
 
 	self:NetworkVar( "Int", 0, "Type" )
-	self:NetworkVar( "String", 0, "Word" )
+	self:NetworkVar( "String", 0, "Word1" )
+	self:NetworkVar( "String", 1, "Word2" )
 	self:NetworkVar( "Float", 0, "Timer" )
 
 end
@@ -40,6 +45,25 @@ function ENT:MakeInactive()
 
 end
 
+function ENT:PickRandomWordForScreen()
+
+	local chances = 100
+
+	::pickword::
+	chances = chances - 1
+	local word = GAMEMODE:RandomWordWithCount(7):upper()
+	for _,v in ipairs(ents.FindByClass("wordm_screen")) do
+
+		if chances == 0 then ErrorNoHalt("FAILED TO CHOOSE RANDOM WORD FOR SCREEN PROPERLY") break end
+		if v:GetWord1() == word then goto pickword end
+		if v:GetWord2() == word then goto pickword end
+
+	end
+
+	return word
+
+end
+
 function ENT:MakeActive( force, newType )
 
 	if CLIENT then return end
@@ -47,28 +71,38 @@ function ENT:MakeActive( force, newType )
 	local t = self:GetType()
 	if t ~= WORDSCREENTYPE_INACTIVE and not force then return end
 
-	self:SetWord( GAMEMODE:RandomWordWithCount(7):upper() )
+	self:SetWord1( self:PickRandomWordForScreen() )
+	self:SetWord2( self:PickRandomWordForScreen() )
 
-	if newType == nil then
+	--[[if newType == nil then
 		newType = {WORDSCREENTYPE_HEALTH, WORDSCREENTYPE_WORDS}
 		newType = newType[math.random(1,#newType)]
-	end
+	end]]
+	newType = WORDSCREENTYPE_MULTI
 
 	self:SetType( newType )
 	self:SetTimer( CurTime() )
 
 end
 
-function ENT:ApplyToPlayer(ply)
+function ENT:ApplyToPlayer(ply, selected)
 
 	if CLIENT then return end
 
 	local t = self:GetType()
 
 	if t == WORDSCREENTYPE_INACTIVE then return end
+	if t == WORDSCREENTYPE_MULTI then
+
+		if selected == 1 then t = WORDSCREENTYPE_WORDS end
+		if selected == 2 then t = WORDSCREENTYPE_HEALTH end
+
+	end
+
 	if t == WORDSCREENTYPE_HEALTH then
 
-		ply:SetHealth( math.min(ply:Health() + 20, 125) )
+		ply:SetHealth( math.min(ply:Health() + 20, MAX_HEALTH_TO_GIVE) )
+		ply:EmitSound("items/smallmedkit1.wav")
 
 	end
 
@@ -109,12 +143,13 @@ function ENT:Think()
 
 end
 
-function ENT:GetTypeString()
+function ENT:GetTypeString(type)
 
-	local t = self:GetType()
+	local t = type or self:GetType()
+	if self:GetType() == WORDSCREENTYPE_INACTIVE then return "---" end
 	if t == WORDSCREENTYPE_HEALTH then return "+20 Health" end
 	if t == WORDSCREENTYPE_WORDS then return "+4 Words" end
-	return "..."
+	return "---"
 
 end
 
@@ -127,6 +162,7 @@ function ENT:Draw()
 	local width = 48 / scale
 	local height = 48 / scale
 	local screen = textfx.Box(-width,-height,width*2,height*2)
+	local active = self:GetType() ~= WORDSCREENTYPE_INACTIVE
 
 	cam.Start3D2D(surf, self:GetAngles(), scale)
 
@@ -138,20 +174,42 @@ function ENT:Draw()
 		surface.SetDrawColor(bdt*255,bdt*255,bdt*255,255)
 		surface.DrawRect(-width,-height,width*2,height*2)
 		
-		local title = textfx.Builder(self:GetTypeString(), "WordAmmoFont"):Box(10,10):Color(100,255,100,255)
+		if active then
+			textfx.Builder("Make your choice", "CooldownWordFont"):Box(10,10):Color(255,255,255,255)
+			:HAlignTo(screen, "center")
+			:VAlignTo(screen, "center")
+			:Draw()
+		end
+
+		local top = textfx.Builder(self:GetTypeString(WORDSCREENTYPE_WORDS), "WordAmmoFont"):Box(10,10):Color(100,255,100,255)
 		:HAlignTo(screen, "center")
 		:VAlignTo(screen, "top")
 		:Draw()
 
-		if self:GetWord() ~= "" and self:GetType() ~= WORDSCREENTYPE_INACTIVE then
+		local bottom = textfx.Builder(self:GetTypeString(WORDSCREENTYPE_HEALTH), "WordAmmoFont"):Box(10,10):Color(100,255,100,255)
+		:HAlignTo(screen, "center")
+		:VAlignTo(screen, "bottom")
+		
+		if LocalPlayer():Health() >= MAX_HEALTH_TO_GIVE and active then
+			bottom:Color(120,100,100,255)
+		end
 
-			local word = textfx.Builder(self:GetWord(), "GameStateTitle"):Box(10,10):Color(0,0,0,255)
+		bottom:Draw()
+
+		if self:GetWord1() ~= "" and active then
+			textfx.Builder(self:GetWord1(), "GameStateTitle"):Box(10,10):Color(0,0,0,255)
 			:HAlignTo(screen, "center")
-			:VAlignTo(screen, "center")
+			:VAlignTo(top, "after")
 			:DrawRounded(110,110,255,255,8)
+			:Draw()
+		end
 
-			word:Draw()
-
+		if self:GetWord2() ~= "" and active then
+			textfx.Builder(self:GetWord2(), "GameStateTitle"):Box(10,10):Color(0,0,0,255)
+			:HAlignTo(screen, "center")
+			:VAlignTo(bottom, "before")
+			:DrawRounded(110,110,255,255,8)
+			:Draw()
 		end
 
 	end)
