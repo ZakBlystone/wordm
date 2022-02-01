@@ -68,6 +68,27 @@ function GM:RandomWordWithCount(n)
 
 end
 
+local removeList = {
+	"item_ammo_357",
+	"item_ammo_ar2_altfire",
+	"item_ammo_crossbow",
+	"item_ammo_pistol",
+	"item_ammo_smg1",
+	"item_ammo_smg1_grenade",
+	"item_battery",
+	"item_box_buckshot",
+	"item_healthcharger",
+	"item_healthkit",
+	"item_healthvial",
+	"item_suitcharger",
+	"weapon_357",
+	"weapon_ar2",
+	"weapon_crossbow",
+	"weapon_frag",
+	"weapon_shotgun",
+	"weapon_slam",
+}
+
 function GM:DoCleanup( reloadMapData )
 
 	if self.QueuedCleanup then return end
@@ -84,6 +105,8 @@ function GM:DoCleanup( reloadMapData )
 		"wordm_spawn", 
 		"wordm_spawn_lobby",
 	}
+
+	table.Add(filter, removeList)
 
 	if reloadMapData then
 		table.RemoveByValue(filter, "wordm_screen")
@@ -170,6 +193,12 @@ function GM:InitPostEntity()
 	self:LoadMapData()
 
 	ents.Create("wordm_game"):Spawn()
+
+	for _,v in ipairs(removeList) do
+		for _,ent in ipairs(ents.FindByClass(v)) do
+			ent:Remove()
+		end
+	end
 
 end
 
