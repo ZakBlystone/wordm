@@ -1,7 +1,13 @@
+surface.CreateFont( "HelpTitle", { font = "Roboto", size = 72, weight = 1000, antialias = true, } )
+surface.CreateFont( "HelpSubTitle", { font = "Roboto", size = 30, weight = 500, antialias = true, } )
+surface.CreateFont( "HelpDetails", { font = "Tahoma", size = 20, weight = 800, antialias = true, } )
+surface.CreateFont( "HelpRow", { font = "Tahoma", size = 18, weight = 1000, antialias = true, } )
+
+
 local HelpText = [[
 	<font=HelpTitle>WorDM</font>
 	<font=HelpSubTitle><colour=200,200,200,255>A gamemode by Kazditi</colour></font>
-	<font=HelpSubTitle><colour=120,120,120,255>"A stick and stone can be ok, but words are ALWAYS hurt you."</colour></font>
+	<font=HelpSubTitle><colour=120,120,120,255>"Sticks and stones may break your bones, but words will ALWAYS hurt you."</colour></font>
 	<font=HelpDetails>
 	Typing many words, good for becoming win at this game.
 	Big words 'chronocinematography' or 'hyperemphasizing' are hurt more, and more words makes better!

@@ -48,10 +48,15 @@ surface.CreateFont( "GameStateSubTitle", {
 	blursize = 0,
 } )
 
-surface.CreateFont( "HelpTitle", { font = "Roboto", size = 72, weight = 1000, antialias = true, } )
-surface.CreateFont( "HelpSubTitle", { font = "Roboto", size = 30, weight = 500, antialias = true, } )
-surface.CreateFont( "HelpDetails", { font = "Tahoma", size = 20, weight = 800, antialias = true, } )
-surface.CreateFont( "HelpRow", { font = "Tahoma", size = 18, weight = 1000, antialias = true, } )
+include "ui/cl_textfx.lua"
+include "ui/cl_chat.lua"
+include "ui/cl_phrasescore.lua"
+include "ui/cl_playereditor.lua"
+include "ui/cl_deathcards.lua"
+include "ui/cl_help.lua"
+include "ui/cl_gamestate.lua"
+include "ui/cl_playeroverlay.lua"
+include "ui/cl_cooldowns.lua"
 
 net.Receive("wordscore_msg", function(len)
 

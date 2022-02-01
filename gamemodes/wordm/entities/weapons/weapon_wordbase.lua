@@ -80,7 +80,7 @@ function SWEP:PrimaryAttack()
 			self.NextBulletDelay = math.min(self.NextBulletDelay, 0.6)
 
 			local len = math.Clamp(wordToFire.last - wordToFire.first, 1, 6)
-			self.NextBulletSpead = math.Remap(len, 1, 6, 0.2, 0.0)
+			self.NextBulletSpead = math.Remap(len, 1, 6, 0.13, 0.0)
 			self.LastFireTime = CurTime()
 
 			if CLIENT then

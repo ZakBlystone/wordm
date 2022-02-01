@@ -4,6 +4,16 @@ AddCSLuaFile "mathutils.lua"
 AddCSLuaFile "wordbullets.lua"
 AddCSLuaFile "shared.lua"
 
+AddCSLuaFile "ui/cl_textfx.lua"
+AddCSLuaFile "ui/cl_chat.lua"
+AddCSLuaFile "ui/cl_phrasescore.lua"
+AddCSLuaFile "ui/cl_playereditor.lua"
+AddCSLuaFile "ui/cl_deathcards.lua"
+AddCSLuaFile "ui/cl_help.lua"
+AddCSLuaFile "ui/cl_gamestate.lua"
+AddCSLuaFile "ui/cl_playeroverlay.lua"
+AddCSLuaFile "ui/cl_cooldowns.lua"
+
 include "shared.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
@@ -579,7 +589,7 @@ end
 
 function GM:PlayerSay( ply, text )
 
-	self:TriggerScreens( text, ply )
+	--self:TriggerScreens( text, ply )
 
 	--local sanitized = SanitizeToAscii(text)
 	--print("SAY: " .. text)

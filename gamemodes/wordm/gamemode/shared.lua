@@ -4,7 +4,6 @@ include "player_extension.lua"
 include "mathutils.lua"
 include "wordbullets.lua"
 include "player_class/player_common.lua"
-include "ui/shared.lua"
 include "mapedit/shared.lua"
 
 GM.Name     = "WorDM"
@@ -162,6 +161,8 @@ function GM:FurthestEntFromPlayers( ents, players )
 end
 
 function GM:Move(ply, mv)
+	
+	if self:GetGameEntity() == nil then return end
 
 	-- Freeze the players
 	if self:GetGameEntity():GetGameState() == GAMESTATE_COUNTDOWN then
