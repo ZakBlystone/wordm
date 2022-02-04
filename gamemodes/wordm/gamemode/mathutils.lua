@@ -1,7 +1,7 @@
 module("math", package.seeall)
 
-local fmax = math.max
-local fmin = math.min
+local fmax = max
+local fmin = min
 function IntersectRayBox(origin, dir, min, max)
 
 	local x0,y0,z0 = min:Unpack()
@@ -78,8 +78,8 @@ local _permut = {
 function HSVToRGB(h,s,v)
 
 	h = h % 360 / 60
-	local x = v * s * math.abs(h % 2 - 1)
-	return _permut[1+math.floor(h)](v,v-x,v-v*s)
+	local x = v * s * abs(h % 2 - 1)
+	return _permut[1+floor(h)](v,v-x,v-v*s)
 
 end
 
@@ -93,17 +93,19 @@ function Bouncer( t, decay, fdecay, speed, upshot )
 	speed = speed or 0.2
 	fdecay = fdecay or 0.35
 
-	local coef = 1/fit(fdecay)
+	local coef = 1 / fit(fdecay)
 
 	if upshot then t = t + speed / 2 end
-	local root = speed / (speed - fdecay * t / coef)
+
+	local scaled = coef * speed
+	local root = scaled / ( scaled - fdecay * t )
 
 	if root < 0 then return 0, 0 end
 
-	local i = math.floor(math.log(root) * (1/fdecay))
-	local duration = speed / math.exp( i * fdecay )
-	local offset = coef * (speed - speed * math.exp( -i * fdecay )) / fdecay
-	local amplitude = 1 / math.exp(i * decay)
+	local i = floor( log(root) * (1/fdecay) )
+	local duration = speed / exp( i * fdecay )
+	local offset = (scaled - scaled * exp( -i * fdecay )) / fdecay
+	local amplitude = 1 / exp(i * decay)
 
 	t = t * ( 1 / duration )
 	t = t - ( offset / duration )
