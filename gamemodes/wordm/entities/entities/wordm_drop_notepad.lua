@@ -20,9 +20,10 @@ function ENT:Initialize()
 
 end
 
-function ENT:SetPhrases( phrases )
+function ENT:SetPhrases( phrases, ply )
 
 	self.Phrases = table.Copy( phrases )
+	self.Owner = ply
 
 	table.sort(self.Phrases, function(a,b)
 		return a.total > b.total
@@ -54,8 +55,13 @@ function ENT:StartTouch( ent )
 
 	if CLIENT then return end
 
+	if ent == self.Owner then print("TOUCH WAS OWNER") return end
 	if not ent:IsPlayer() then return end
 	if not ent:Alive() then return end
+	if self.Phrases == nil then print("PHRASES NOT SET YET!") return end
+
+	if self.Touched then print("TOUCHED MULTIPLE TIMES") return end
+	self.Touched = true
 
 	self:EmitSound("wordm/word_pickup.wav", 75, 100, 1)
 

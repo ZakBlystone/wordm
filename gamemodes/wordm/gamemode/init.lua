@@ -14,6 +14,7 @@ AddCSLuaFile "ui/cl_gamestate.lua"
 AddCSLuaFile "ui/cl_playeroverlay.lua"
 AddCSLuaFile "ui/cl_cooldowns.lua"
 
+include "wordlist.lua"
 include "shared.lua"
 
 resource.AddFile("resource/fonts/Akkurat-Bold.ttf")
@@ -46,8 +47,9 @@ if G_WORDLIST == nil then
 			local last = s[#s]
 			if string.find(s,"[%.]+") then continue end
 			if last == "-" then continue end
-			G_WORDLIST[#G_WORDLIST+1] = s:lower()
-			G_WORDLIST_HASH[s:lower()] = true
+			local lower = s:lower()
+			G_WORDLIST[#G_WORDLIST+1] = lower
+			G_WORDLIST_HASH[lower] = true
 		end
 
 	end
@@ -127,6 +129,7 @@ function GM:DoCleanup( reloadMapData )
 			local phys = p:GetPhysicsObject()
 			if IsValid(phys) then
 				phys:Sleep()
+				p:DropToFloor()
 			end
 		end
 	end)
@@ -341,7 +344,7 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 		local drop = ents.Create("wordm_drop_notepad")
 		drop:SetPos( ply:GetPos() + Vector(0,0,30) )
 		drop:Spawn()
-		drop:SetPhrases( ply:GetPhrases() )
+		drop:SetPhrases( ply:GetPhrases(), ply )
 
 		ply:ClearPhrases()
 

@@ -38,7 +38,7 @@ function SendWordScore( t )
 
 	if bit.band(t.flags, WORD_VALID) ~= 0 then
 		net.WriteUInt(t.score, WORD_SCOREBITS)
-		net.WriteUInt(math.floor(t.cooldown), WORD_COOLDOWNBITS)
+		net.WriteUInt(math.floor(t.cooldown or 0), WORD_COOLDOWNBITS)
 	end
 
 	if bit.band(t.flags, WORD_COOLDOWN) ~= 0 then
