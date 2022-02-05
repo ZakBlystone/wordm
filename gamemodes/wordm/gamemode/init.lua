@@ -340,6 +340,15 @@ function GM:BecomeSpectator( ply, stay )
 
 end
 
+function GM:EntityTakeDamage( ent, dmg )
+
+	if IsValid(ent) and ent:IsPlayer() then
+		ent.LastDamageAmount = dmg:GetDamage()
+		print("PLAYER TOOK DAMAGE: " .. tostring(ent.LastDamageAmount))
+	end
+
+end
+
 function GM:PlayerDeath( ply, inflictor, attacker )
 
 	ply.deathTime = CurTime()
@@ -355,6 +364,22 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 		ply:ClearPhrases()
 
 	end
+
+	if IsValid(inflictor) and inflictor.HitByWord and IsValid( inflictor.HitByPlayer or attacker ) then
+
+		net.Start("worddeath_msg")
+		net.WriteString(inflictor.HitByWord)
+		net.WriteEntity(inflictor.HitByPlayer or attacker)
+		net.WriteEntity(ply)
+		net.WriteFloat(ply.LastDamageAmount or 0)
+		net.WriteUInt(ply:LastHitGroup(), 16)
+		net.Broadcast()
+
+		print("SENDING LAST DAMAGE: " .. tostring(ply.LastDamageAmount))
+
+	end
+
+	print("KILED BY: " .. tostring(inflictor) .. " " .. tostring(attacker) .. " " .. tostring(inflictor.HitByWord) .. " " .. tostring(attacker.HitByWord))
 
 end
 
@@ -703,6 +728,9 @@ function GM:SpectatorControls( ply, key )
 
 	if not IsValid(ply) then return end
 	if ply:IsBot() then return end
+
+	-- Don't start spectator controls for a sec
+	if ply.deathTime and CurTime() - ply.deathTime < 2 then return end
 
 	if key == IN_ATTACK then
 

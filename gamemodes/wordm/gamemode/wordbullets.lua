@@ -200,12 +200,19 @@ function wmeta:OnHit( tr )
 
 		else
 
+			tr.Entity.HitByWord = self.str
+			tr.Entity.HitByPlayer = self.owner
+
 			local inf = DamageInfo()
+			inf:SetBaseDamage( self.damage or 0 )
 			inf:SetDamage( self.damage or 0 )
 			inf:SetDamageType( DMG_BULLET )
 			inf:SetAttacker( self.owner )
 			inf:SetDamageForce( self.dir * (100 * self.damage) )
 			inf:SetDamagePosition( tr.HitPos )
+			inf:SetAmmoType( game.GetAmmoID( 'AR2' ) )
+			inf:SetInflictor( self.owner:GetActiveWeapon() )
+			inf:SetReportedPosition( tr.HitPos )
 			tr.Entity:TakeDamageInfo( inf )
 
 			if sv_debugWordBullets:GetBool() then
