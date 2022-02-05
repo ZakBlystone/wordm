@@ -167,6 +167,8 @@ function GM:Move(ply, mv)
 	-- Freeze the players
 	if self:GetGameEntity():GetGameState() == GAMESTATE_COUNTDOWN then
 
+		if not ply:IsPlaying() then return end
+
 		local ang = mv:GetMoveAngles()
 		local pos = mv:GetOrigin()
 		local vel = mv:GetVelocity()

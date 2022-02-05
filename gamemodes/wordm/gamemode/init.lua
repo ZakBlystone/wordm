@@ -701,6 +701,9 @@ end
 
 function GM:SpectatorControls( ply, key )
 
+	if not IsValid(ply) then return end
+	if ply:IsBot() then return end
+
 	if key == IN_ATTACK then
 
 		self:ChangeSpectatorTarget(ply, 1)
@@ -715,7 +718,7 @@ function GM:SpectatorControls( ply, key )
 
 	if key == IN_JUMP then
 
-		print(ply:GetObserverTarget())
+		--print(ply:GetObserverTarget())
 		if IsValid(ply:GetObserverTarget()) then
 			ply:UnSpectate()
 			ply:Spectate( OBS_MODE_ROAMING )
