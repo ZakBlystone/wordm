@@ -16,6 +16,8 @@ function GM:DrawHealthBars()
 
 		if tr.Hit and tr.Entity == v then
 
+			if tr.Entity == LocalPlayer():GetObserverTarget() then continue end
+
 			local scr = (v:GetPos() + Vector(0,0,92)):ToScreen()
 			if scr.visible then
 

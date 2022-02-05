@@ -171,6 +171,31 @@ function GM:DrawGameState()
 
 	end
 
+	if gamestate == GAMESTATE_PLAYING and (LocalPlayer():Alive() == false or LocalPlayer():IsPlaying() == false) then
+		self:DrawSpectatorStatus()
+	end
+
+	if gamestate == GAMESTATE_COUNTDOWN and LocalPlayer():IsPlaying() == false then
+		self:DrawSpectatorStatus()
+	end
+
+end
+
+function GM:DrawSpectatorStatus()
+
+	local observing = LocalPlayer():GetObserverTarget()
+	local spectateText = "You are spectating"
+	local hintText = "Press " .. input.LookupBinding("+attack") .. " and " .. input.LookupBinding("+attack2") .. " to cycle through players"
+	local hintText2 = "Press " .. input.LookupBinding("+jump") .. " to change mode"
+
+	if IsValid(observing) then
+		spectateText = spectateText .. " " .. observing:Nick()
+	end
+
+	draw.SimpleText(spectateText, "GameStateSubTitle", ScrW()/2,ScrH() - 120, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+	draw.SimpleText(hintText, "WordScoreFont", ScrW()/2,ScrH() - 80, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+	draw.SimpleText(hintText2, "WordScoreFont", ScrW()/2,ScrH() - 60, Color( 255, 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+
 end
 
 function GM:DrawReadyPlayers()

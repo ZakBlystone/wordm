@@ -236,6 +236,8 @@ function GM:CanPlayerSuicide( ply )
 
 	local gamestate = GAMEMODE:GetGameEntity():GetGameState()
 
+	if gamestate >= GAMESTATE_COUNTDOWN and not ply:IsPlaying() then return false end
+
 	if ply:IsPlaying() then return true end
 	if gamestate == GAMESTATE_IDLE then return true end
 	if gamestate == GAMESTATE_PLAYING then return true end
@@ -319,15 +321,19 @@ function GM:BecomeSpectator( ply, stay )
 	local spawns = ents.FindByClass("wordm_spawn")
 
 	ply:StripWeapons()
-	ply:Spectate(OBS_MODE_ROAMING)
 
 	if not stay then
 		if #activePlayers > 0 then
-			ply:SetPos( activePlayers[math.random(1, #activePlayers)]:GetPos() + Vector(0,0,64) )
+			--ply:SetPos( activePlayers[math.random(1, #activePlayers)]:GetPos() + Vector(0,0,64) )
+			local target = activePlayers[math.random(1, #activePlayers)]
+			ply:Spectate( OBS_MODE_CHASE )
+			ply:SpectateEntity( target )
 		else
+			ply:Spectate(OBS_MODE_ROAMING)
 			ply:SetPos( spawns[math.random(1,#spawns)]:GetPos() + Vector(0,0,64) )
 		end
 	else
+		ply:Spectate(OBS_MODE_ROAMING)
 		ply:SetPos( ply:GetPos() + Vector(0,0,64) )
 	end
 
@@ -644,14 +650,107 @@ function GM:Think()
 
 end
 
+local function Circular( t, value, dir, condition )
+
+	local n = 0
+	for k,v in ipairs(t) do if v == value then n = k break end end
+
+	for i=0, #t do
+		n = n + (dir or 1)
+		if n >= #t+1 then 
+			n = 1 
+		elseif n <= 0 then
+			n = #t
+		end
+		if not condition or condition(t[n]) then return t[n] end
+	end
+
+	return value
+
+end
+
+function GM:ChangeSpectatorTarget( ply, dir )
+
+	local activePlayers = self:GetAllPlayers( PLAYER_PLAYING )
+	local currentTarget = ply:GetObserverTarget()
+	if IsValid(currentTarget) then
+
+		-- Pick next or previous target from the one being followed
+		local nextTarget = Circular(activePlayers, currentTarget, dir, function(p) return p:Alive() end)
+		ply:Spectate( OBS_MODE_CHASE )
+		ply:SpectateEntity(nextTarget)
+
+	else
+
+		-- Pick the first alive player
+		for _,v in ipairs(activePlayers) do
+			if v:Alive() and v ~= ply then
+				ply:Spectate( OBS_MODE_CHASE )
+				ply:SpectateEntity(v)
+				return
+			end
+		end
+
+		-- Go to roaming if none found
+		ply:UnSpectate()
+		ply:Spectate( OBS_MODE_ROAMING )
+
+	end
+
+end
+
+function GM:SpectatorControls( ply, key )
+
+	if key == IN_ATTACK then
+
+		self:ChangeSpectatorTarget(ply, 1)
+
+	end
+
+	if key == IN_ATTACK2 then
+		
+		self:ChangeSpectatorTarget(ply, -1)
+		
+	end
+
+	if key == IN_JUMP then
+
+		print(ply:GetObserverTarget())
+		if IsValid(ply:GetObserverTarget()) then
+			ply:UnSpectate()
+			ply:Spectate( OBS_MODE_ROAMING )
+		else
+			self:ChangeSpectatorTarget(ply, 1)
+		end
+
+	end
+
+end
+
 function GM:KeyPress( ply, key )
 
 	if not IsFirstTimePredicted() then return end
 
-	if self:GetGameEntity():GetGameState() <= GAMESTATE_COUNTDOWN then
+	local gamestate = self:GetGameEntity():GetGameState()
+
+	if gamestate <= GAMESTATE_COUNTDOWN then
 
 		if key == IN_RELOAD then
 			ply:ToggleReady()
+		end
+
+		if not ply:IsPlaying() and gamestate == GAMESTATE_COUNTDOWN then
+
+			self:SpectatorControls( ply, key )
+
+		end
+
+	elseif gamestate >= GAMESTATE_PLAYING then
+
+		if not ply:Alive() or not ply:IsPlaying() then
+
+			self:SpectatorControls( ply, key )
+
 		end
 
 	end
