@@ -365,17 +365,21 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 
 	end
 
-	if IsValid(inflictor) and inflictor.HitByWord and IsValid( inflictor.HitByPlayer or attacker ) then
+	if IsValid(inflictor) and inflictor:GetClass() ~= "worldspawn" and not inflictor:IsPlayer() then 
 
-		net.Start("worddeath_msg")
-		net.WriteString(inflictor.HitByWord)
-		net.WriteEntity(inflictor.HitByPlayer or attacker)
-		net.WriteEntity(ply)
-		net.WriteFloat(ply.LastDamageAmount or 0)
-		net.WriteUInt(ply:LastHitGroup(), 16)
-		net.Broadcast()
+		if inflictor.HitByWord and IsValid( inflictor.HitByPlayer or attacker ) then
 
-		print("SENDING LAST DAMAGE: " .. tostring(ply.LastDamageAmount))
+			net.Start("worddeath_msg")
+			net.WriteString(inflictor.HitByWord)
+			net.WriteEntity(inflictor.HitByPlayer or attacker)
+			net.WriteEntity(ply)
+			net.WriteFloat(ply.LastDamageAmount or 0)
+			net.WriteUInt(HITGROUP_GENERIC, 16)
+			net.Broadcast()
+
+			print("SENDING LAST DAMAGE: " .. tostring(ply.LastDamageAmount))
+
+		end
 
 	end
 
