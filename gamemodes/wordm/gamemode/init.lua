@@ -40,9 +40,10 @@ if G_WORDLIST == nil then
 	G_WORDLIST = {}
 	G_WORDLIST_HASH = {}
 
-	local function LoadWordTable(filename)
+	local function LoadWordTable(filename, path)
 
-		local wordstr = file.Read("gamemodes/wordm/content/data/" .. filename .. ".txt", "THIRDPARTY")
+		local wordstr = file.Read(filename, path or "THIRDPARTY")
+		if not wordstr then print("Unable to find wordtable: " .. tostring(filename)) return end
 		for s in string.gmatch(wordstr, "[^%s,]+") do
 			local last = s[#s]
 			if string.find(s,"[%.]+") then continue end
@@ -54,7 +55,8 @@ if G_WORDLIST == nil then
 
 	end
 
-	LoadWordTable("words")
+	LoadWordTable("gamemodes/wordm/content/data/words.txt")
+	LoadWordTable("wordm/added.txt", "DATA")
 
 	print("Loaded " .. #G_WORDLIST .. " words.")
 
@@ -481,6 +483,8 @@ concommand.Add("addWords", function(p,c,a)
 				G_WORDLIST_HASH[str] = true
 				print("Added word: " .. str)
 
+				file.Append( "wordm/added.txt", str .. "\n" )
+
 			else
 
 				print("Word already added: " .. str)
@@ -539,6 +543,8 @@ function GM:ScoreWord( word, applyCooldown, noCooldown )
 				info.cooldown = computed
 			end
 		end
+	else
+		file.Append("wordm/missed.txt", lowered .. "\n")
 	end
 
 	info.flags = flags
