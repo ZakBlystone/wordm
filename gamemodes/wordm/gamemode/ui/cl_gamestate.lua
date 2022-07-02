@@ -165,7 +165,7 @@ function GM:DrawGameState()
 	if gamestate == GAMESTATE_IDLE then
 
 		if not self.bShowingHelp then
-			draw.SimpleText("Press " .. input.LookupBinding("gm_showhelp") .. " for help", "GameStateSubTitle", 30, 30, Color(255,255,255,255))
+			draw.SimpleText("Press " .. (input.LookupBinding("gm_showhelp") or "") .. " for help", "GameStateSubTitle", 30, 30, Color(255,255,255,255))
 			--draw.SimpleText("Press Enter for regular chat", "GameStateSubTitle", 30, 60, Color(255,255,255,255))
 		end
 
