@@ -175,7 +175,7 @@ function ENT:Draw()
 		surface.DrawRect(-width,-height,width*2,height*2)
 		
 		if active then
-			textfx.Builder("Make your choice", "CooldownWordFont"):Box(10,10):Color(255,255,255,255)
+			textfx.Builder("Type your choice", "CooldownWordFont"):Box(10,10):Color(255,255,255,255)
 			:HAlignTo(screen, "center")
 			:VAlignTo(screen, "center")
 			:Draw()
