@@ -1,4 +1,7 @@
 
+-- Custom chatbox implementation
+-- This is used as a measure to prevent cheating via copy-paste
+
 MAX_CHAT_LENGTH = 100
 
 function GM:CreateMove( cmd )

@@ -117,6 +117,7 @@ function meta:GivePhrase( scoring )
 
 end
 
+-- Consume a word from this player's word pool
 function meta:ConsumeWord()
 
 	local phrase = self.CurrentPhrase
@@ -144,6 +145,7 @@ function meta:ConsumeWord()
 
 end
 
+-- Consume a phrase from this player's word pool
 function meta:ConsumePhrase()
 
 	local phrase = self.CurrentPhrase
@@ -173,6 +175,8 @@ function meta:ConsumePhrase()
 
 end
 
+-- Propagates word consumption event to the player's weapon
+-- Also updates the current phrase
 function meta:OnWordConsumed(phrase, word)
 
 	if #phrase.words == 0 then
@@ -187,6 +191,7 @@ function meta:OnWordConsumed(phrase, word)
 
 end
 
+-- Propagates phrase added event to the player's weapon
 function meta:OnPhraseAdded(phrase)
 
 	local weapon = self:GetActiveWeapon()
@@ -196,6 +201,7 @@ function meta:OnPhraseAdded(phrase)
 
 end
 
+-- Propagates phrase cleared event to the player's weapon
 function meta:OnPhrasesCleared()
 
 	local weapon = self:GetActiveWeapon()

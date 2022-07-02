@@ -1,3 +1,5 @@
+-- Networked word bullets
+
 local sv_debugWordBullets = CreateConVar("sv_debugwordbullets", "0", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "show network debugging")
 local sv_damageMultiplier = CreateConVar("sv_damageMultiplier", "1", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "modify word-bullet damage")
 

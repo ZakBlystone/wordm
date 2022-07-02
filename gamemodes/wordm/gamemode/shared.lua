@@ -160,6 +160,7 @@ function GM:FurthestEntFromPlayers( ents, players )
 
 end
 
+-- Overriding Move here to manually freeze players at the appropriate time
 function GM:Move(ply, mv)
 	
 	if self:GetGameEntity() == nil then return end

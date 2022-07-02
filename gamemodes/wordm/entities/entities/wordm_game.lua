@@ -13,6 +13,13 @@ GAMESTATE_COUNTDOWN = 2
 GAMESTATE_PLAYING = 3
 GAMESTATE_POSTGAME = 4
 
+-- State machine controlling game flow
+-- Idle: nothing happening, players are just chilling in lobby area
+-- Waiting: enough players are ready, start a timer for the game to start (allowing players to opt out)
+-- Countdown: players are spawned into the game area, players are frozen until timer completes
+-- Playing: normal gameplay is happening
+-- Postgame: postgame report
+
 function ENT:Initialize()
 
 	if SERVER then
@@ -31,12 +38,14 @@ function ENT:Initialize()
 
 end
 
+-- Force the timer to advance to the next game state
 function ENT:FinishTimer()
 
 	self:SetTimer( CurTime() )
 
 end
 
+-- Concommand to force the timer to advance to the next game state
 concommand.Add("wordm_finishTimer", function(p,c,a)
 
 	if p.IsAdmin ~= nil and not p:IsAdmin() then return end
@@ -46,6 +55,8 @@ concommand.Add("wordm_finishTimer", function(p,c,a)
 
 end)
 
+-- Transition to the Idle state
+-- 'returnedFromGame' is true when a round has just finished playing
 function ENT:GotoIdleState( returnedFromGame )
 
 	if CLIENT then return end
@@ -54,31 +65,36 @@ function ENT:GotoIdleState( returnedFromGame )
 
 	if returnedFromGame then
 
+		-- Cleanup the map
 		GAMEMODE:DoCleanup()
 
+		-- Get all idle players and un-spectate them
 		local idlePlayers = GAMEMODE:GetAllPlayers( PLAYER_IDLE )
 		for _,v in ipairs(idlePlayers) do
 			v:UnSpectate()
 			v:Spawn()
 		end
 
-
+		-- Get all active players and make them idle / un-spectate
 		local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
 		for _,v in ipairs(activePlayers) do
 			v:GotoIdle()
 			v:UnSpectate()
 		end
 
+		-- Respawn all active players
 		for _,v in ipairs(activePlayers) do
 			v:Spawn()
 		end
 
+		-- Deactivate all the word screens
 		self:DeactivateWordScreens()
 
 	end
 
 end
 
+-- Transition to the Waiting state (waiting for players to opt-in / opt-out of playing)
 function ENT:GotoWaitingState()
 
 	if CLIENT then return end
@@ -92,6 +108,8 @@ function ENT:GotoWaitingState()
 
 end
 
+-- Transition to the Countdown state (players are spawned in play area frozen)
+-- (freezing logic is handled in shared.lua GM:Move)
 function ENT:GotoCountdownState()
 
 	if CLIENT then return end
@@ -118,6 +136,7 @@ function ENT:GotoCountdownState()
 
 end
 
+-- Transition to Playing state (no need to modify timer or anything here)
 function ENT:GotoPlayingState()
 
 	if CLIENT then return end
@@ -126,6 +145,7 @@ function ENT:GotoPlayingState()
 
 end
 
+-- Transition to Post game state (timer to advance to next state)
 function ENT:GotoPostGameState()
 
 	if CLIENT then return end
@@ -145,6 +165,7 @@ function ENT:DeactivateWordScreens()
 
 end
 
+-- Determine what powers a word screen will show based on general state of all players
 function ENT:WhatKindOfPowers()
 
 	local averagePlayerHealth = 0
@@ -156,6 +177,7 @@ function ENT:WhatKindOfPowers()
 
 	averagePlayerHealth = averagePlayerHealth / #players
 
+	-- If average player health is lower than 75, show health powerups, otherwise show words
 	if averagePlayerHealth < 75 then
 		return WORDSCREENTYPE_HEALTH
 	else
@@ -164,56 +186,64 @@ function ENT:WhatKindOfPowers()
 
 end
 
-
+-- Pick a word screen in the map and activate it
 function ENT:ManageWordScreenActivation()
 
 	self.NextScreenActivation = self.NextScreenActivation or CurTime()
 	if self.NextScreenActivation > CurTime() then return end
 
 	local screens = ents.FindByClass("wordm_screen")
-	local inActiveScreens = {}
+	local inactiveScreens = {}
 	local numActive = 0
 
+	-- Determine active and inactive screens
 	for _,v in ipairs(screens) do
 		if v:IsActive() then 
 			numActive = numActive + 1
 		else
-			inActiveScreens[#inActiveScreens+1] = v
+			inactiveScreens[#inactiveScreens+1] = v
 		end
 	end
 
-	if #inActiveScreens == 0 then
+	-- No inactive screens, do nothing and wait 10 seconds
+	if #inactiveScreens == 0 then
 		self.NextScreenActivation = CurTime() + 10
 		return 
 	end
 
+	-- There are plenty of active screens ( > 60% ), do nothing and wait 10 seconds
 	if numActive > (#screens * 0.60) then
 		print("Waiting for more screens: " .. numActive .. " / " .. #screens)
 		self.NextScreenActivation = CurTime() + 10
 		return
 	end
 
+	-- Locate the furthest screen from any player ( to prevent camping )
 	local players = GAMEMODE:GetAllPlayers( PLAYER_PLAYING ) 
-	local furthest = GAMEMODE:FurthestEntFromPlayers( inActiveScreens, players )
+	local furthest = GAMEMODE:FurthestEntFromPlayers( inactiveScreens, players )
 
+	-- If one was found, make that screen active
 	if furthest then
 		furthest:MakeActive( false, self:WhatKindOfPowers() )
 		print("Activated Screen: " .. tostring(furthest) .. " " .. numActive .. " / " .. #screens)
 	end
 
+	-- Wait another 10 seconds
 	self.NextScreenActivation = CurTime() + 10
 
 end
 
+-- State machine thunk
 function ENT:Think()
 
 	if SERVER then
 
+		-- Manage state machine on the server
 		local state = self:GetGameState()
-		local shouldFreezePlayers = false
 
 		if state == GAMESTATE_IDLE then
 
+			-- If number of ready players exceeds 1 (a duel) go to Waiting state
 			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
 			if #readyPlayers > 1 then
 
@@ -228,6 +258,7 @@ function ENT:Think()
 
 		elseif state == GAMESTATE_WAITING then
 
+			-- If number of ready players drops to 0, cancel and go back to Idle state
 			local readyPlayers = GAMEMODE:GetAllPlayers( PLAYER_READY )
 			if #readyPlayers == 0 then
 
@@ -235,6 +266,7 @@ function ENT:Think()
 
 			end
 
+			-- When timer expires or everyone is ready, go to the Countdown state
 			if self:GetTimeRemaining() == 0 or #readyPlayers == #player.GetAll() then
 
 				self:GotoCountdownState()
@@ -243,8 +275,7 @@ function ENT:Think()
 
 		elseif state == GAMESTATE_COUNTDOWN then
 
-			shouldFreezePlayers = true
-
+			-- When timer expires goto to Playing state
 			if self:GetTimeRemaining() == 0 then
 
 				self:GotoPlayingState()
@@ -253,6 +284,7 @@ function ENT:Think()
 
 		elseif state == GAMESTATE_PLAYING then
 
+			-- During the Playing state, manage the word screens
 			self:ManageWordScreenActivation()
 
 			local activePlayers = GAMEMODE:GetAllPlayers( PLAYER_PLAYING )
@@ -261,7 +293,8 @@ function ENT:Think()
 				if v:Alive() then alive = alive + 1 end
 			end
 
-			if alive == 0 or alive == 1 then --change this to 1 when done testing
+			-- If everyone is dead or one person is left standing, the game is over
+			if alive == 0 or alive == 1 then
 
 				self:GotoPostGameState()
 
@@ -269,6 +302,7 @@ function ENT:Think()
 
 		elseif state == GAMESTATE_POSTGAME then
 
+			-- Go to idle state once timer expires
 			if self:GetTimeRemaining() == 0 then
 
 				self:GotoIdleState( true )
@@ -279,6 +313,7 @@ function ENT:Think()
 
 	else
 
+		-- On the client, clear things when we transition to idle state
 		if self:GetGameState() == GAMESTATE_IDLE then
 
 			if not self.ClearedStuff then
@@ -301,6 +336,7 @@ function ENT:Think()
 
 end
 
+-- How much time is left on the timer
 function ENT:GetTimeRemaining()
 
 	return math.max(self:GetTimer() - CurTime(), 0)
@@ -313,7 +349,6 @@ function ENT:SetupDataTables()
 	self:NetworkVar( "Float", 0, "Timer" )
 
 end
-
 
 function ENT:UpdateTransmitState()
 
