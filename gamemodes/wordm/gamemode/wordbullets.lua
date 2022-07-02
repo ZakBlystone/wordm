@@ -211,7 +211,7 @@ function wmeta:OnHit( tr )
 			inf:SetDamageForce( self.dir * (100 * self.damage) )
 			inf:SetDamagePosition( tr.HitPos )
 			inf:SetAmmoType( game.GetAmmoID( 'AR2' ) )
-			inf:SetInflictor( self.owner:GetActiveWeapon() )
+			inf:SetInflictor( IsValid(self.owner) and self.owner:GetActiveWeapon() or self.owner )
 			inf:SetReportedPosition( tr.HitPos )
 			tr.Entity:TakeDamageInfo( inf )
 
