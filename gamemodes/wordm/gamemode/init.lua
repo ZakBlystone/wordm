@@ -169,13 +169,13 @@ end
 
 function GM:LoadMapData()
 
-	local mapdata = file.Read("gamemodes/wordm/content/data/maps/" .. game.GetMap() .. ".txt", "THIRDPARTY" )
+	local mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
 
 	if mapdata == nil then
-		print("Map data not found in third-party content, trying data/wordm/maps...")
-		mapdata = file.Read("wordm/maps/" .. game.GetMap() .. ".txt", "DATA" )
+		print("Map data not found in data directory, trying third-party content")
+		mapdata = file.Read("gamemodes/wordm/content/data/maps/" .. game.GetMap() .. ".txt", "THIRDPARTY" )
 	else
-		print("Found mapdata in third-party content for " .. game.GetMap())
+		print("Found mapdata in data/wordm/maps for " .. game.GetMap())
 	end
 
 	if mapdata then
