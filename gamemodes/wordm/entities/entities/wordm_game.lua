@@ -6,6 +6,7 @@ ENT.Base = "base_point"
 local sv_gameWaitTime = CreateConVar("wordm_gameWaitTimer", "15", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to give players to join")
 local sv_gameStartTime = CreateConVar("wordm_gameStartTimer", "30", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to let players setup in-game")
 local sv_gamePostTime = CreateConVar("wordm_gamePostTimer", "10", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "How long to let post-game run")
+local sv_gameReadyOnly = CreateConVar("wordm_gameReadyOnly", "0", bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED), "When starting a new game, only put ready players into the match. Non-ready players will spectate.")
 
 GAMESTATE_IDLE = 0
 GAMESTATE_WAITING = 1
@@ -119,13 +120,16 @@ function ENT:GotoCountdownState()
 	end
 
 	-- Put all ready players into the game
-	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_READY) ) do
+	local start_ply_flags = sv_gameReadyOnly:GetBool() and PLAYER_READY or bit.bor(PLAYER_READY, PLAYER_IDLE)
+	local spectate_plys = bit.band(PLAYER_IDLE, bit.bnot(start_ply_flags))
+
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(start_ply_flags) ) do
 		v:StartPlaying()
 		v:Spawn()
 	end
 
 	-- Make all idle players spectate
-	for _,v in ipairs( GAMEMODE:GetAllPlayers(PLAYER_IDLE) ) do
+	for _,v in ipairs( GAMEMODE:GetAllPlayers(spectate_plys) ) do
 
 		GAMEMODE:BecomeSpectator( v )
 
