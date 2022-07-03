@@ -474,7 +474,7 @@ function Save()
 		end
 	end
 
-	local str = util.TableToJSON( out )
+	local str = util.TableToJSON( out, true )
 	print( str )
 
 	file.Write("wordm/maps/" .. game.GetMap() .. ".txt", str)
