@@ -259,10 +259,95 @@ function GM:CanPlayerSuicide( ply )
 
 end
 
-function GM:SelectFurthestSpawn( playing )
+function GM:GetSpawnpoints( playing )
 
 	local spawns = ents.FindByClass(playing and "wordm_spawn" or "wordm_spawn_lobby")
+
+	-- map was probably not configured, merge in any map spawn points
+	if #spawns <= 1 then
+
+		if self.DefaultSpawns == nil then
+
+			print("***Map contains no configuration data, adding map's default spawnpoints!***")
+			print("***This is not an ideal configuration***")
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_start" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_deathmatch" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_combine" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_rebel" ) )
+
+			-- CS Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_counterterrorist" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_terrorist" ) )
+
+			-- DOD Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_axis" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_allies" ) )
+
+			-- (Old) GMod Maps
+			spawns = table.Add( spawns, ents.FindByClass( "gmod_player_start" ) )
+
+			-- TF Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_teamspawn" ) )
+
+			-- INS Maps
+			spawns = table.Add( spawns, ents.FindByClass( "ins_spawnpoint" ) )
+
+			-- AOC Maps
+			spawns = table.Add( spawns, ents.FindByClass( "aoc_spawnpoint" ) )
+
+			-- Dystopia Maps
+			spawns = table.Add( spawns, ents.FindByClass( "dys_spawn_point" ) )
+
+			-- PVKII Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_pirate" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_viking" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_knight" ) )
+
+			-- DIPRIP Maps
+			spawns = table.Add( spawns, ents.FindByClass( "diprip_start_team_blue" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "diprip_start_team_red" ) )
+
+			-- OB Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_red" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_blue" ) )
+
+			-- SYN Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_coop" ) )
+
+			-- ZPS Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_human" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_zombie" ) )
+
+			-- ZM Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_zombiemaster" ) )
+
+			-- FOF Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_fof" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_desperado" ) )
+			spawns = table.Add( spawns, ents.FindByClass( "info_player_vigilante" ) )
+
+			-- L4D Maps
+			spawns = table.Add( spawns, ents.FindByClass( "info_survivor_rescue" ) )
+			self.DefaultSpawns = spawns
+
+		else
+
+			spawns = self.DefaultSpawns
+
+		end
+
+	end
+
+	return spawns
+
+end
+
+function GM:SelectIdealSpawn( playing )
+
+	local spawns = self:GetSpawnpoints( playing )
 	local players = self:GetAllPlayers( playing and PLAYER_PLAYING or bit.bor(PLAYER_IDLE, PLAYER_READY) )
+
+
 
 	--print("PCHECK PLAYING: " .. tostring( playing ))
 	--print("PCHECK FLAGS: " .. tostring( playing and PLAYER_PLAYING or bit.bor(PLAYER_IDLE, PLAYER_READY) ))
@@ -271,11 +356,11 @@ function GM:SelectFurthestSpawn( playing )
 		return spawns[math.random(1,#spawns)]
 	end
 
-	local debugClose = false
-
+	-- If we are not playing, we actually want the closest spawn so players can hang out together
+	local wantClosest = not playing
 	local bestSpawn = nil
 	local bestDist = 0
-	if debugClose then bestDist = math.huge end
+	if wantClosest then bestDist = math.huge end
 
 	for _,v in ipairs(spawns) do
 
@@ -284,8 +369,8 @@ function GM:SelectFurthestSpawn( playing )
 			minPlayerDist = math.min( minPlayerDist, pl:GetPos():Distance(v:GetPos()) )
 		end
 
-		if debugClose then
-			if minPlayerDist < 10 then continue end
+		if wantClosest then
+			if minPlayerDist < 10 then continue end -- we don't want to spawn on top of another player
 			if minPlayerDist < bestDist then
 				bestSpawn = v
 				bestDist = minPlayerDist
@@ -316,7 +401,7 @@ end
 
 function GM:PlayerSelectSpawn( ply )
 
-	local spawn = self:SelectFurthestSpawn( ply:IsPlaying() )
+	local spawn = self:SelectIdealSpawn( ply:IsPlaying() )
 
 	if not IsValid(spawn) then
 
