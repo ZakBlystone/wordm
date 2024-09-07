@@ -55,7 +55,7 @@ if G_WORDLIST == nil then
 
 	end
 
-	LoadWordTable("gamemodes/wordm/content/data/words.txt")
+	LoadWordTable("data_static/words.txt")
 	LoadWordTable("wordm/added.txt", "DATA")
 
 	print("Loaded " .. #G_WORDLIST .. " words.")
@@ -173,7 +173,7 @@ function GM:LoadMapData()
 
 	if mapdata == nil then
 		print("Map data not found in data directory, trying third-party content")
-		mapdata = file.Read("gamemodes/wordm/content/data/maps/" .. game.GetMap() .. ".txt", "THIRDPARTY" )
+		mapdata = file.Read("data_static/maps/" .. game.GetMap() .. ".txt", "THIRDPARTY" )
 	else
 		print("Found mapdata in data/wordm/maps for " .. game.GetMap())
 	end
